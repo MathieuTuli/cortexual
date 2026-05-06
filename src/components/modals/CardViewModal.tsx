@@ -163,21 +163,40 @@ export function CardViewModal() {
 
           {card.type === 'link' && (
             <div className="space-y-4">
-              {/* Link preview image */}
-              {card.preview?.image && (
-                <div className="flex justify-center">
-                  <img
-                    src={card.preview.image}
-                    alt={card.title || 'Link preview'}
-                    className="max-w-full max-h-[40vh] object-contain rounded"
-                  />
-                </div>
-              )}
               {card.embedType === 'youtube' && card.embedData && 'videoId' in card.embedData && (
                 <YouTubeEmbed videoId={card.embedData.videoId as string} />
               )}
               {card.embedType === 'twitter' && card.embedData && 'tweetId' in card.embedData && (
                 <TwitterEmbed tweetId={card.embedData.tweetId as string} />
+              )}
+              {card.embedType !== 'youtube' && card.embedType !== 'twitter' && (
+                <div className="rounded-lg border-2 border-[#a8d4f0] overflow-hidden bg-white">
+                  {card.preview?.image && (
+                    <img
+                      src={card.preview.image}
+                      alt={card.preview.title || card.title || 'Link preview'}
+                      className="w-full max-h-[40vh] object-cover"
+                      onError={(e) => { e.currentTarget.style.display = 'none' }}
+                    />
+                  )}
+                  <div className="p-4 space-y-2">
+                    {card.preview?.siteName && (
+                      <p className="text-xs uppercase tracking-wide text-accent-secondary font-semibold">
+                        🔗 {card.preview.siteName}
+                      </p>
+                    )}
+                    {(card.preview?.title || card.title) && (
+                      <p className="text-base font-medium text-text leading-snug">
+                        {card.preview?.title || card.title}
+                      </p>
+                    )}
+                    {card.preview?.description && (
+                      <p className="text-sm text-text-muted leading-relaxed">
+                        {card.preview.description}
+                      </p>
+                    )}
+                  </div>
+                </div>
               )}
               <a
                 href={card.url}
@@ -186,7 +205,7 @@ export function CardViewModal() {
                 className="block p-3 bg-gradient-to-b from-[#e8f4fc] to-white rounded-lg border border-[#a8d4f0] hover:border-accent-primary transition-colors"
                 onClick={(e) => e.stopPropagation()}
               >
-                <p className="text-sm text-accent-primary break-all">{card.url}</p>
+                <p className="text-sm text-accent-primary break-all">↗ {card.url}</p>
               </a>
             </div>
           )}

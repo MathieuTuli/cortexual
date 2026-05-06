@@ -2,6 +2,17 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
 import fs from 'fs'
+import { fetchTweet } from 'react-tweet/api'
+import { ProxyAgent, fetch as undiciFetch, setGlobalDispatcher } from 'undici'
+
+const PROXY_URL =
+  process.env.HTTPS_PROXY ||
+  process.env.https_proxy ||
+  process.env.HTTP_PROXY ||
+  process.env.http_proxy
+if (PROXY_URL) {
+  setGlobalDispatcher(new ProxyAgent(PROXY_URL))
+}
 
 const DATA_DIR = path.resolve(__dirname, 'data')
 const CARDS_FILE = path.join(DATA_DIR, 'cards.json')
@@ -18,6 +29,85 @@ if (!fs.existsSync(SPACES_FILE)) {
   fs.writeFileSync(SPACES_FILE, JSON.stringify([
     { id: 'default', name: 'General', icon: '📚', color: '#0066cc', sortOrder: 0, isDefault: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), deletedAt: null }
   ]))
+}
+
+interface LinkPreview {
+  title?: string
+  description?: string
+  image?: string
+  siteName?: string
+}
+
+function decodeEntities(s: string): string {
+  return s
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&#x27;/g, "'")
+    .replace(/&nbsp;/g, ' ')
+}
+
+function pickMeta(html: string, names: string[]): string | undefined {
+  for (const name of names) {
+    const re = new RegExp(
+      `<meta[^>]+(?:property|name)=["']${name}["'][^>]*>`,
+      'i',
+    )
+    const tag = html.match(re)?.[0]
+    if (!tag) continue
+    const content = tag.match(/content=["']([^"']*)["']/i)?.[1]
+    if (content) return decodeEntities(content)
+  }
+  return undefined
+}
+
+async function fetchLinkPreview(url: string): Promise<LinkPreview> {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 8000)
+  try {
+    const res = await undiciFetch(url, {
+      signal: controller.signal,
+      headers: {
+        'User-Agent':
+          'Mozilla/5.0 (compatible; CortexualBot/1.0; +https://cortexual.local)',
+        Accept: 'text/html,application/xhtml+xml',
+      },
+      redirect: 'follow',
+    })
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    const contentType = res.headers.get('content-type') || ''
+    if (!contentType.includes('text/html')) {
+      return {}
+    }
+    const html = (await res.text()).slice(0, 500_000)
+
+    const title =
+      pickMeta(html, ['og:title', 'twitter:title']) ||
+      decodeEntities(html.match(/<title[^>]*>([^<]*)<\/title>/i)?.[1]?.trim() || '') ||
+      undefined
+    const description = pickMeta(html, [
+      'og:description',
+      'twitter:description',
+      'description',
+    ])
+    let image = pickMeta(html, ['og:image', 'og:image:url', 'twitter:image', 'twitter:image:src'])
+    const siteName = pickMeta(html, ['og:site_name', 'application-name']) ||
+      new URL(url).hostname.replace(/^www\./, '')
+
+    if (image) {
+      try {
+        image = new URL(image, url).toString()
+      } catch {
+        image = undefined
+      }
+    }
+
+    return { title, description, image, siteName }
+  } finally {
+    clearTimeout(timeout)
+  }
 }
 
 function fileStoragePlugin() {
@@ -260,6 +350,50 @@ function fileStoragePlugin() {
             res.end(fs.readFileSync(filePath))
             return
           }
+        }
+        next()
+      })
+
+      // GET /api/tweet/:id - proxy to Twitter syndication CDN for react-tweet
+      server.middlewares.use(async (req: any, res: any, next: any) => {
+        const match = req.url?.match(/^\/api\/tweet\/(\d+)$/)
+        if (match && req.method === 'GET') {
+          const id = match[1]
+          try {
+            const tweet = await fetchTweet(id)
+            res.setHeader('Content-Type', 'application/json')
+            res.setHeader('Cache-Control', 'public, max-age=86400, s-maxage=86400')
+            res.end(JSON.stringify(tweet))
+          } catch (err: any) {
+            res.statusCode = err?.status || 500
+            res.setHeader('Content-Type', 'application/json')
+            res.end(JSON.stringify({ error: err?.message || 'Failed to fetch tweet' }))
+          }
+          return
+        }
+        next()
+      })
+
+      // GET /api/link-preview?url=... - fetch and parse OG/Twitter meta tags
+      server.middlewares.use(async (req: any, res: any, next: any) => {
+        if (req.url?.startsWith('/api/link-preview') && req.method === 'GET') {
+          const url = new URL(req.url, 'http://localhost').searchParams.get('url')
+          if (!url) {
+            res.statusCode = 400
+            res.end(JSON.stringify({ error: 'Missing url parameter' }))
+            return
+          }
+          try {
+            const preview = await fetchLinkPreview(url)
+            res.setHeader('Content-Type', 'application/json')
+            res.setHeader('Cache-Control', 'public, max-age=86400')
+            res.end(JSON.stringify(preview))
+          } catch (err: any) {
+            res.statusCode = 500
+            res.setHeader('Content-Type', 'application/json')
+            res.end(JSON.stringify({ error: err?.message || 'Failed to fetch preview' }))
+          }
+          return
         }
         next()
       })

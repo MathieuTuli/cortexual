@@ -3,6 +3,7 @@ import { useAppStore, useCardsStore, useSpacesStore } from '@/core/stores'
 import type { CardType, CreateCardInput } from '@/core/types'
 import { DEFAULT_SPACE_ID } from '@/core/types'
 import { parseUrl, getYouTubeThumbnail } from '@/core/utils'
+import { api } from '@/core/api'
 import { Modal, Button, Input, Textarea, TagInput } from '../ui'
 import { useDropzone } from 'react-dropzone'
 import { clsx } from 'clsx'
@@ -173,6 +174,16 @@ export function CreateCardModal() {
       } else if (cardType === 'link') {
         const parsed = parseUrl(url)
 
+        let preview: { title?: string; description?: string; image?: string; siteName?: string } | undefined
+        if (parsed.embedType === 'youtube' && parsed.embedId) {
+          preview = { image: getYouTubeThumbnail(parsed.embedId), siteName: 'YouTube' }
+        } else if (parsed.embedType === 'generic') {
+          const fetched = await api.getLinkPreview(url)
+          if (fetched && (fetched.title || fetched.description || fetched.image)) {
+            preview = fetched
+          }
+        }
+
         input = {
           type: 'link',
           spaceId,
@@ -184,9 +195,7 @@ export function CreateCardModal() {
               ? { videoId: parsed.embedId }
               : { tweetId: parsed.embedId }
             : undefined,
-          preview: parsed.embedType === 'youtube' && parsed.embedId
-            ? { image: getYouTubeThumbnail(parsed.embedId), siteName: 'YouTube' }
-            : undefined,
+          preview,
           tags,
           subnotes: [],
         }

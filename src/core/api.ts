@@ -102,4 +102,15 @@ export const api = {
     const res = await fetch(`${API_BASE}/media/${cardId}`)
     return res.json()
   },
+
+  async getLinkPreview(url: string): Promise<{
+    title?: string
+    description?: string
+    image?: string
+    siteName?: string
+  }> {
+    const res = await fetch(`${API_BASE}/link-preview?url=${encodeURIComponent(url)}`)
+    if (!res.ok) return {}
+    return res.json()
+  },
 }
