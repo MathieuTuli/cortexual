@@ -1,0 +1,157 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Y2K Style - Light Theme */
+  --font-mono: 'SF Mono', 'Consolas', 'Monaco', monospace;
+  --font-sans: 'Trebuchet MS', 'Arial', system-ui, sans-serif;
+
+  /* Light Base Colors */
+  --color-bg: #e8f4fc;
+  --color-surface: #ffffff;
+  --color-surface-raised: #f0f8ff;
+  --color-border: #a8d4f0;
+  --color-border-bold: #5ba3d0;
+  --color-text: #1a3a5c;
+  --color-text-muted: #6a8caa;
+
+  /* Y2K Blue Palette */
+  --color-accent-primary: #0066cc;
+  --color-accent-secondary: #00aaff;
+  --color-accent-highlight: #66ccff;
+  --color-accent-glow: #99ddff;
+
+  /* Skeuomorphic Colors */
+  --color-button-top: #f8fcff;
+  --color-button-bottom: #d0e8f8;
+  --color-inset-shadow: #a0c8e8;
+  --color-highlight: #ffffff;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  font-family: var(--font-sans);
+  background: linear-gradient(180deg, #d4e8f8 0%, #e8f4fc 50%, #f0f8ff 100%);
+  color: var(--color-text);
+  min-height: 100vh;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/* Y2K Scrollbar */
+::-webkit-scrollbar {
+  width: 16px;
+  height: 16px;
+}
+
+::-webkit-scrollbar-track {
+  background: linear-gradient(90deg, #d0e0f0 0%, #e8f0f8 50%, #d0e0f0 100%);
+  border: 1px solid #a8c8e0;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #f0f8ff 0%, #c0d8f0 50%, #a0c0e0 100%);
+  border: 2px solid #88b0d0;
+  border-radius: 2px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #ffffff 0%, #d0e8ff 50%, #b0d0f0 100%);
+}
+
+/* Selection styling */
+::selection {
+  background: var(--color-accent-secondary);
+  color: white;
+}
+
+/* Focus styling */
+:focus-visible {
+  outline: 2px solid var(--color-accent-primary);
+  outline-offset: 2px;
+}
+
+/* Y2K Skeuomorphic Button Base */
+.btn-y2k {
+  background: linear-gradient(180deg, var(--color-button-top) 0%, var(--color-button-bottom) 100%);
+  border: 2px solid var(--color-border-bold);
+  border-radius: 4px;
+  box-shadow:
+    inset 1px 1px 0 var(--color-highlight),
+    inset -1px -1px 0 var(--color-inset-shadow),
+    2px 2px 4px rgba(0, 60, 120, 0.2);
+}
+
+.btn-y2k:hover {
+  background: linear-gradient(180deg, #ffffff 0%, #e0f0ff 100%);
+}
+
+.btn-y2k:active {
+  background: linear-gradient(180deg, var(--color-button-bottom) 0%, var(--color-button-top) 100%);
+  box-shadow:
+    inset 1px 1px 2px var(--color-inset-shadow),
+    inset -1px -1px 0 var(--color-highlight);
+}
+
+/* Y2K Inset Panel */
+.panel-inset {
+  background: linear-gradient(180deg, #e0ecf4 0%, #f8fcff 100%);
+  border: 2px solid;
+  border-color: #88b0d0 #d0e8ff #d0e8ff #88b0d0;
+  box-shadow: inset 2px 2px 4px rgba(0, 40, 80, 0.1);
+}
+
+/* Y2K Raised Panel */
+.panel-raised {
+  background: linear-gradient(180deg, #ffffff 0%, #f0f8ff 100%);
+  border: 2px solid;
+  border-color: #d0e8ff #88b0d0 #88b0d0 #d0e8ff;
+  box-shadow: 2px 2px 6px rgba(0, 60, 120, 0.15);
+}
+
+/* Shine effect */
+.shine {
+  position: relative;
+  overflow: hidden;
+}
+
+.shine::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+  animation: shine 3s infinite;
+}
+
+@keyframes shine {
+  0% { left: -100%; }
+  50%, 100% { left: 150%; }
+}
+
+/* Twitter embeds - contain to prevent expansion and remove extra spacing */
+.twitter-embed {
+  width: 100%;
+  overflow: hidden;
+  contain: inline-size;
+}
+
+/* Remove Twitter's default margins */
+.twitter-embed twitter-widget {
+  margin: 0 !important;
+}

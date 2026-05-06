@@ -1,0 +1,36 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+*.tsbuildinfo
+
+# Local data (cards, spaces, uploaded media)
+data/
+
+# Eval / one-off recovery artifacts
+eval-50/
+eval-200/
+recover*.cjs
+cleanup.cjs
+
+# Editor / OS
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Env
+.env
+.env.local
+.env.*.local
+
+# Claude local
+.claude/
