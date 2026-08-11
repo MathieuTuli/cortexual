@@ -1,48 +1,46 @@
-import { useSpacesStore } from '@/core/stores'
+import { useSpacesStore, useCardsStore } from '@/core/stores'
 import { SpaceList } from '../spaces/SpaceList'
-import { ImportExport } from '../ImportExport'
-import { Button } from '../ui'
+import { clsx } from 'clsx'
 
 export function Sidebar() {
   const activeSpaceId = useSpacesStore((s) => s.activeSpaceId)
   const setActiveSpace = useSpacesStore((s) => s.setActiveSpace)
+  const cards = useCardsStore((s) => s.cards)
+  const filterTags = useCardsStore((s) => s.filterTags)
+  const clearFilters = useCardsStore((s) => s.clearFilters)
+
+  const isAllCards = activeSpaceId === null && filterTags.length === 0
+  const totalCount = cards.length
 
   return (
-    <aside className="w-64 bg-gradient-to-b from-[#f0f8ff] to-[#d8ecf8] border-r-2 border-[#88b0d0] flex flex-col shadow-y2k">
-      {/* Logo */}
-      <div className="p-4 border-b-2 border-[#a8d4f0] bg-gradient-to-r from-[#0066cc] to-[#00aaff]">
-        <h1 className="font-bold text-xl text-white drop-shadow-sm">
-          Cortexual
-        </h1>
-        <p className="text-xs text-[#b8e0ff] mt-0.5">your second brain</p>
+    <aside className="w-60 flex flex-col flex-shrink-0">
+      <div className="px-6 pt-6 pb-5">
+        <h1 className="text-xl font-semibold tracking-tight text-text">cortexual</h1>
       </div>
 
-      {/* All Cards Button */}
-      <div className="p-3 border-b-2 border-[#a8d4f0]">
-        <Button
-          variant={activeSpaceId === null ? 'primary' : 'default'}
-          className="w-full justify-center"
-          onClick={() => setActiveSpace(null)}
+      <div className="px-3">
+        <button
+          onClick={() => {
+            setActiveSpace(null)
+            clearFilters()
+          }}
+          className={clsx(
+            'w-full flex items-center justify-between gap-2.5 px-3 py-1.5 rounded-lg text-sm transition-colors',
+            isAllCards
+              ? 'bg-white/70 backdrop-blur-sm text-text font-medium shadow-soft'
+              : 'text-text-muted hover:bg-white/50 hover:text-text'
+          )}
         >
-          All Cards
-        </Button>
+          <span className="flex items-center gap-2.5">
+            <span className="w-2 h-2 rounded-full flex-shrink-0 bg-[#94a3b8]" />
+            All cards
+          </span>
+          <span className="text-[11px] tabular-nums text-text-muted">{totalCount}</span>
+        </button>
       </div>
 
-      {/* Spaces */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="mt-4 flex-1 overflow-y-auto">
         <SpaceList />
-      </div>
-
-      {/* Import/Export */}
-      <div className="flex-shrink-0">
-        <ImportExport />
-      </div>
-
-      {/* Footer */}
-      <div className="p-3 border-t-2 border-[#a8d4f0] bg-gradient-to-b from-[#e8f4fc] to-[#d0e8f8]">
-        <p className="text-xs text-text-muted text-center">
-          v0.1.0 - local mode
-        </p>
       </div>
     </aside>
   )

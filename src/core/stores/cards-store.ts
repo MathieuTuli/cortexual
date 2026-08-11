@@ -3,6 +3,11 @@ import { api } from '../api'
 import type { Card, CreateCardInput, UpdateCardInput } from '../types'
 import { generateId } from '../utils'
 
+export interface NewCard {
+  input: CreateCardInput
+  blobs?: Blob[]
+}
+
 interface CardsState {
   cards: Card[]
   isLoading: boolean
@@ -12,6 +17,7 @@ interface CardsState {
 
   loadCards: () => Promise<void>
   createCard: (input: CreateCardInput, mediaBlobs?: Blob | Blob[]) => Promise<Card>
+  createCards: (newCards: NewCard[], onProgress?: (done: number, total: number) => void) => Promise<Card[]>
   updateCard: (id: string, changes: UpdateCardInput) => Promise<void>
   deleteCard: (id: string) => Promise<void>
   deleteCardsBySpaceId: (spaceId: string) => Promise<void>
@@ -70,6 +76,31 @@ export const useCardsStore = create<CardsState>((set, get) => ({
 
     set((state) => ({ cards: [card, ...state.cards] }))
     return card
+  },
+
+  createCards: async (newCards, onProgress) => {
+    const now = new Date().toISOString()
+    const cards = newCards.map(({ input }) => ({
+      ...input,
+      id: generateId(),
+      createdAt: now,
+      updatedAt: now,
+      deletedAt: null,
+    } as Card))
+
+    await api.createCardsBulk(cards)
+
+    // Media has to land before the cards enter the store, otherwise the grid
+    // renders them and reads back an empty media directory.
+    for (let i = 0; i < newCards.length; i++) {
+      for (const blob of newCards[i].blobs ?? []) {
+        await api.uploadMedia(cards[i].id, blob)
+      }
+      onProgress?.(i + 1, newCards.length)
+    }
+
+    set((state) => ({ cards: [...cards, ...state.cards] }))
+    return cards
   },
 
   updateCard: async (id, changes) => {

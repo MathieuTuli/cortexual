@@ -1,5 +1,4 @@
 import { useAppStore, useCardsStore, useSpacesStore } from '@/core/stores'
-import { Button } from './ui'
 import { useState } from 'react'
 
 export function SelectionActionBar() {
@@ -22,29 +21,33 @@ export function SelectionActionBar() {
 
   return (
     <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
-      <div className="bg-gradient-to-b from-[#0066cc] to-[#004499] rounded-lg shadow-lg border-2 border-[#66ccff] px-4 py-3 flex items-center gap-4">
-        <span className="text-white font-medium">
+      <div className="bg-[#0f172a] text-white rounded-full shadow-card px-5 py-2 flex items-center gap-3">
+        <span className="text-sm font-medium">
           {selectedCount} card{selectedCount !== 1 ? 's' : ''} selected
         </span>
 
+        <span className="w-px h-5 bg-white/20" />
+
         <div className="relative">
-          <Button
-            variant="default"
-            size="sm"
+          <button
             onClick={() => setShowSpaceDropdown(!showSpaceDropdown)}
+            className="text-sm text-white/80 hover:text-white transition-colors"
           >
-            Move to Space
-          </Button>
+            Move to space
+          </button>
 
           {showSpaceDropdown && (
-            <div className="absolute bottom-full mb-2 left-0 bg-white rounded-lg shadow-lg border-2 border-[#a8d4f0] py-1 min-w-[180px]">
+            <div className="absolute bottom-full mb-2 left-0 bg-white text-text rounded-xl shadow-card border border-[var(--color-border)] py-1 min-w-[180px]">
               {spaces.map((space) => (
                 <button
                   key={space.id}
-                  className="w-full px-3 py-2 text-left text-sm hover:bg-[#e8f4fc] transition-colors flex items-center gap-2"
+                  className="w-full px-3 py-1.5 text-left text-sm hover:bg-[#f3f4f6] transition-colors flex items-center gap-2"
                   onClick={() => handleMoveToSpace(space.id)}
                 >
-                  <span>{space.icon || '📁'}</span>
+                  <span
+                    className="w-1.5 h-1.5 rounded-full"
+                    style={{ backgroundColor: space.color || '#94a3b8' }}
+                  />
                   <span>{space.name}</span>
                 </button>
               ))}
@@ -52,14 +55,14 @@ export function SelectionActionBar() {
           )}
         </div>
 
-        <Button
-          variant="ghost"
-          size="sm"
+        <span className="w-px h-5 bg-white/20" />
+
+        <button
           onClick={clearSelection}
-          className="text-white hover:text-[#b8e0ff]"
+          className="text-sm text-white/80 hover:text-white transition-colors"
         >
           Cancel
-        </Button>
+        </button>
       </div>
     </div>
   )

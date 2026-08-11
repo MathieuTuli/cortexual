@@ -12,14 +12,14 @@ export function Tag({ children, onClick, onRemove, active, className }: TagProps
   return (
     <span
       className={clsx(
-        'inline-flex items-center gap-0.5',
-        'font-sans text-[10px]',
-        'rounded-full px-1.5 py-0.5',
-        'transition-all',
+        'inline-flex items-center gap-1',
+        'font-sans text-[11px] font-medium',
+        'rounded-full px-2 py-0.5',
+        'transition-colors',
         active
-          ? 'bg-gradient-to-b from-[#66ccff] to-[#0066cc] text-white border border-[#004499]'
-          : 'bg-gradient-to-b from-white to-[#e8f4fc] text-accent-primary border border-[#a8d4f0] hover:border-accent-primary',
-        onClick && 'cursor-pointer hover:shadow-y2k',
+          ? 'bg-accent-primary text-white'
+          : 'bg-[#f3f4f6] text-[#475569] hover:bg-[#e5e7eb]',
+        onClick && 'cursor-pointer',
         className
       )}
       onClick={onClick}
@@ -31,7 +31,10 @@ export function Tag({ children, onClick, onRemove, active, className }: TagProps
             e.stopPropagation()
             onRemove()
           }}
-          className="hover:text-red-500 ml-0.5 font-bold"
+          className={clsx(
+            'ml-0.5 leading-none',
+            active ? 'text-white/80 hover:text-white' : 'text-text-muted hover:text-text'
+          )}
         >
           ×
         </button>

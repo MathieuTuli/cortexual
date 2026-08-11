@@ -12,18 +12,18 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
       <button
         ref={ref}
         className={clsx(
-          'inline-flex items-center justify-center rounded',
-          'font-sans transition-all',
+          'inline-flex items-center justify-center rounded-lg',
+          'transition-colors',
           'disabled:opacity-50 disabled:cursor-not-allowed',
           {
-            'bg-gradient-to-b from-white to-[#d0e8f8] border-2 border-[#88b0d0] shadow-y2k-button hover:from-white hover:to-[#e0f0ff]':
+            'bg-white border border-[var(--color-border)] hover:bg-[#f9fafb] text-text':
               variant === 'default',
-            'bg-transparent hover:bg-[#c8dff0] text-accent-primary':
+            'bg-transparent hover:bg-[#f3f4f6] text-text-muted hover:text-text':
               variant === 'ghost',
           },
           {
-            'w-5 h-5 text-[10px]': size === 'sm',
-            'w-7 h-7 text-xs': size === 'md',
+            'w-6 h-6': size === 'sm',
+            'w-8 h-8': size === 'md',
           },
           className
         )}

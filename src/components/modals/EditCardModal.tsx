@@ -1,8 +1,43 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import { useDropzone } from 'react-dropzone'
 import { useAppStore, useCardsStore, useSpacesStore } from '@/core/stores'
-import type { Card, Subnote } from '@/core/types'
-import { generateId } from '@/core/utils'
+import type { Card, ImageCard, Subnote } from '@/core/types'
+import { generateId, filesFromClipboard, isImage } from '@/core/utils'
+import { api } from '@/core/api'
 import { Modal, Button, Input, Textarea, TagInput } from '../ui'
+import { clsx } from 'clsx'
+
+async function generateThumbnail(file: File): Promise<string> {
+  return new Promise((resolve) => {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const img = new Image()
+      img.onload = () => {
+        const canvas = document.createElement('canvas')
+        const maxSize = 200
+        let { width, height } = img
+        if (width > height) {
+          if (width > maxSize) {
+            height = (height * maxSize) / width
+            width = maxSize
+          }
+        } else {
+          if (height > maxSize) {
+            width = (width * maxSize) / height
+            height = maxSize
+          }
+        }
+        canvas.width = width
+        canvas.height = height
+        const ctx = canvas.getContext('2d')!
+        ctx.drawImage(img, 0, 0, width, height)
+        resolve(canvas.toDataURL('image/jpeg', 0.7))
+      }
+      img.src = e.target?.result as string
+    }
+    reader.readAsDataURL(file)
+  })
+}
 
 export function EditCardModal() {
   const isOpen = useAppStore((s) => s.isEditModalOpen)
@@ -13,9 +48,7 @@ export function EditCardModal() {
   const deleteCard = useCardsStore((s) => s.deleteCard)
   const spaces = useSpacesStore((s) => s.spaces)
 
-  // Compute allTags from cards array (not calling a function in the selector)
   const allTags = Array.from(new Set(cards.flatMap((c) => c.tags))).sort()
-
   const card = cards.find((c) => c.id === editingCardId)
 
   const [title, setTitle] = useState('')
@@ -28,6 +61,10 @@ export function EditCardModal() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showSubnotes, setShowSubnotes] = useState(false)
 
+  const [existingMediaUrls, setExistingMediaUrls] = useState<string[]>([])
+  const [newImageFiles, setNewImageFiles] = useState<File[]>([])
+  const [newImagePreviews, setNewImagePreviews] = useState<string[]>([])
+
   useEffect(() => {
     if (card) {
       setTitle(card.title || '')
@@ -36,32 +73,64 @@ export function EditCardModal() {
       setTags([...card.tags])
       setSpaceId(card.spaceId)
       setSubnotes([...card.subnotes])
+      setNewImageFiles([])
+      setNewImagePreviews([])
     }
-  }, [card])
+  }, [card?.id])
+
+  useEffect(() => {
+    if (!card || card.type !== 'image') return
+    let cancelled = false
+    api.getMediaUrls(card.id).then((urls) => {
+      if (!cancelled) setExistingMediaUrls(urls)
+    })
+    return () => { cancelled = true }
+  }, [card?.id, card?.type])
+
+  // Handle paste for image cards — takes every pasted image, not just the first
+  useEffect(() => {
+    if (!isOpen || card?.type !== 'image') return
+    const handlePaste = (e: ClipboardEvent) => {
+      const files = filesFromClipboard(e.clipboardData, isImage)
+      if (files.length === 0) return
+      e.preventDefault()
+      setNewImageFiles((prev) => [...prev, ...files])
+      setNewImagePreviews((prev) => [...prev, ...files.map((f) => URL.createObjectURL(f))])
+    }
+    window.addEventListener('paste', handlePaste)
+    return () => window.removeEventListener('paste', handlePaste)
+  }, [isOpen, card?.type])
+
+  const onDrop = useCallback((acceptedFiles: File[]) => {
+    setNewImageFiles((prev) => [...prev, ...acceptedFiles])
+    setNewImagePreviews((prev) => [...prev, ...acceptedFiles.map((f) => URL.createObjectURL(f))])
+  }, [])
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: { 'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.webp'] },
+    multiple: true,
+  })
+
+  const removeNewImage = (index: number) => {
+    URL.revokeObjectURL(newImagePreviews[index])
+    setNewImageFiles((prev) => prev.filter((_, i) => i !== index))
+    setNewImagePreviews((prev) => prev.filter((_, i) => i !== index))
+  }
 
   if (!card) return null
 
   const addTag = (tag: string) => {
-    if (!tags.includes(tag)) {
-      setTags([...tags, tag])
-    }
+    if (!tags.includes(tag)) setTags([...tags, tag])
   }
-
   const removeTag = (tag: string) => {
     setTags(tags.filter((t) => t !== tag))
   }
-
   const addSubnote = () => {
     if (!newSubnote.trim()) return
-    const subnote: Subnote = {
-      id: generateId(),
-      content: newSubnote.trim(),
-      createdAt: new Date().toISOString(),
-    }
-    setSubnotes([...subnotes, subnote])
+    setSubnotes([...subnotes, { id: generateId(), content: newSubnote.trim(), createdAt: new Date().toISOString() }])
     setNewSubnote('')
   }
-
   const removeSubnote = (id: string) => {
     setSubnotes(subnotes.filter((s) => s.id !== id))
   }
@@ -75,16 +144,28 @@ export function EditCardModal() {
         spaceId,
         subnotes,
       }
-
       if (card.type === 'note') {
         (updates as Partial<Card> & { content: string }).content = content
       }
-
       if (card.type === 'image' || card.type === 'video') {
         (updates as Partial<Card> & { caption?: string }).caption = caption || undefined
       }
 
+      // For image cards: upload any newly added images and append their thumbnails
+      if (card.type === 'image' && newImageFiles.length > 0) {
+        const newThumbnails: string[] = []
+        for (const file of newImageFiles) {
+          await api.uploadMedia(card.id, file)
+          if (file.type.startsWith('image/')) {
+            newThumbnails.push(await generateThumbnail(file))
+          }
+        }
+        const existingThumbs = (card as ImageCard).thumbnailDataUrls || []
+        ;(updates as Partial<ImageCard>).thumbnailDataUrls = [...existingThumbs, ...newThumbnails]
+      }
+
       await updateCard(card.id, updates)
+      newImagePreviews.forEach((u) => URL.revokeObjectURL(u))
       closeModal()
     } catch (error) {
       console.error('Failed to update card:', error)
@@ -94,72 +175,112 @@ export function EditCardModal() {
   }
 
   const handleDelete = async () => {
-    if (confirm('Are you sure you want to delete this card?')) {
+    if (confirm('Delete this card?')) {
       await deleteCard(card.id)
       closeModal()
     }
   }
 
   return (
-    <Modal open={isOpen} onOpenChange={closeModal} title={`Edit [${card.type}]`}>
+    <Modal open={isOpen} onOpenChange={closeModal} title="Edit card">
       <div className="space-y-4">
-        {/* Title */}
         <Input
           placeholder="Title (optional)"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
         />
 
-        {/* Content (notes only) */}
         {card.type === 'note' && (
           <Textarea
-            placeholder="Note content..."
+            placeholder="Note content…"
             value={content}
             onChange={(e) => setContent(e.target.value)}
             rows={6}
           />
         )}
 
-        {/* Display for other types */}
         {card.type === 'link' && (
-          <div className="p-3 bg-surface border border-border">
-            <p className="font-mono text-sm text-accent-cyber break-all">{card.url}</p>
+          <div className="px-3.5 py-2.5 bg-[#f9fafb] border border-[var(--color-border)] rounded-lg">
+            <p className="text-xs text-text-muted mb-0.5">URL</p>
+            <p className="text-sm text-accent-primary break-all">{card.url}</p>
           </div>
         )}
 
-        {(card.type === 'image' || card.type === 'video') && (
-          <>
-            <div className="p-3 bg-surface border border-border">
-              <p className="font-mono text-sm text-text-muted">
-                [{card.type} attached]
+        {card.type === 'image' && (
+          <div className="space-y-3">
+            <div>
+              <p className="section-label mb-2">
+                Images ({existingMediaUrls.length + newImageFiles.length})
               </p>
+              {(existingMediaUrls.length + newImagePreviews.length) > 0 && (
+                <div className="grid grid-cols-4 gap-2 mb-3">
+                  {existingMediaUrls.map((url, i) => (
+                    <div key={`ex-${i}`} className="relative aspect-square rounded-lg overflow-hidden border border-[var(--color-border)]">
+                      <img src={url} alt={`Image ${i + 1}`} className="w-full h-full object-cover" />
+                    </div>
+                  ))}
+                  {newImagePreviews.map((preview, i) => (
+                    <div key={`new-${i}`} className="relative aspect-square rounded-lg overflow-hidden border-2 border-accent-primary group">
+                      <img src={preview} alt={`New ${i + 1}`} className="w-full h-full object-cover" />
+                      <span className="absolute top-1 left-1 px-1.5 py-0.5 text-[9px] font-semibold rounded bg-accent-primary text-white">NEW</span>
+                      <button
+                        type="button"
+                        onClick={() => removeNewImage(i)}
+                        className="absolute top-1 right-1 w-5 h-5 bg-[#0f172a]/80 text-white rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div
+                {...getRootProps()}
+                className={clsx(
+                  'rounded-xl p-5 text-center cursor-pointer transition-all',
+                  'bg-[#f9fafb] border-2 border-dashed',
+                  isDragActive
+                    ? 'border-accent-primary bg-[#eef2ff]'
+                    : 'border-[var(--color-border-bold)] hover:border-accent-primary'
+                )}
+              >
+                <input {...getInputProps()} />
+                <p className="text-sm text-text-muted">
+                  {isDragActive ? 'Drop images to add' : '+ Drag, click, or paste to add more images'}
+                </p>
+              </div>
             </div>
+
             <Input
               placeholder="Caption (optional)"
               value={caption}
               onChange={(e) => setCaption(e.target.value)}
             />
-          </>
+          </div>
         )}
 
-        {/* Tags */}
+        {card.type === 'video' && (
+          <Input
+            placeholder="Caption (optional)"
+            value={caption}
+            onChange={(e) => setCaption(e.target.value)}
+          />
+        )}
+
         <TagInput
           tags={tags}
           availableTags={allTags}
           onAddTag={addTag}
           onRemoveTag={removeTag}
-          label="🏷️ Tags"
+          label="Tags"
         />
 
-        {/* Space */}
         <div>
-          <label className="block text-xs font-mono text-text-muted mb-1 uppercase">
-            Space
-          </label>
+          <label className="section-label block mb-1.5">Space</label>
           <select
             value={spaceId}
             onChange={(e) => setSpaceId(e.target.value)}
-            className="w-full bg-surface border-3 border-border px-3 py-2 font-mono text-text focus:outline-none focus:border-accent-cyber"
+            className="w-full px-3.5 py-2 rounded-lg bg-white border border-[var(--color-border)] text-sm text-text focus:outline-none focus:border-accent-primary focus:ring-2 focus:ring-accent-primary/20 hover:border-[var(--color-border-bold)]"
           >
             {spaces.map((space) => (
               <option key={space.id} value={space.id}>
@@ -169,13 +290,12 @@ export function EditCardModal() {
           </select>
         </div>
 
-        {/* Subnotes */}
-        <div className="border-t-3 border-border pt-4">
+        <div className="border-t border-[var(--color-border)] pt-4">
           <button
             onClick={() => setShowSubnotes(!showSubnotes)}
-            className="flex items-center gap-2 font-mono text-sm text-text-muted hover:text-text"
+            className="flex items-center gap-2 text-sm text-text-muted hover:text-text"
           >
-            <span>[{showSubnotes ? '-' : '+'}]</span>
+            <span>{showSubnotes ? '−' : '+'}</span>
             <span>Subnotes ({subnotes.length})</span>
           </button>
 
@@ -184,20 +304,20 @@ export function EditCardModal() {
               {subnotes.map((subnote) => (
                 <div
                   key={subnote.id}
-                  className="flex items-start gap-2 p-2 bg-surface border border-border"
+                  className="flex items-start gap-2 p-3 bg-[#f9fafb] border border-[var(--color-border)] rounded-lg"
                 >
-                  <p className="flex-1 font-mono text-sm">{subnote.content}</p>
+                  <p className="flex-1 text-sm">{subnote.content}</p>
                   <button
                     onClick={() => removeSubnote(subnote.id)}
-                    className="text-text-muted hover:text-red-500 font-mono text-xs"
+                    className="text-text-muted hover:text-[#dc2626] text-xs"
                   >
-                    [x]
+                    Remove
                   </button>
                 </div>
               ))}
               <div className="flex gap-2">
                 <Input
-                  placeholder="Add subnote..."
+                  placeholder="Add subnote…"
                   value={newSubnote}
                   onChange={(e) => setNewSubnote(e.target.value)}
                   onKeyDown={(e) => {
@@ -215,24 +335,22 @@ export function EditCardModal() {
           )}
         </div>
 
-        {/* Metadata */}
-        <div className="text-xs font-mono text-text-muted space-y-1 pt-4 border-t border-border">
-          <p>Created: {new Date(card.createdAt).toLocaleString()}</p>
-          <p>Updated: {new Date(card.updatedAt).toLocaleString()}</p>
+        <div className="text-xs text-text-muted space-y-0.5 pt-3 border-t border-[var(--color-border)]">
+          <p>Created {new Date(card.createdAt).toLocaleString()}</p>
+          <p>Updated {new Date(card.updatedAt).toLocaleString()}</p>
         </div>
       </div>
 
-      {/* Actions */}
       <div className="flex justify-between mt-6">
         <Button variant="danger" onClick={handleDelete}>
           Delete
         </Button>
-        <div className="flex gap-3">
+        <div className="flex gap-2">
           <Button variant="ghost" onClick={closeModal}>
             Cancel
           </Button>
           <Button variant="primary" onClick={handleSave} disabled={isSubmitting}>
-            {isSubmitting ? 'Saving...' : 'Save Changes'}
+            {isSubmitting ? 'Saving…' : 'Save'}
           </Button>
         </div>
       </div>

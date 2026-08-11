@@ -4,10 +4,9 @@ import { useSpacesStore, useCardsStore } from '@/core/stores'
 import { clsx } from 'clsx'
 import { ContextMenu, useContextMenu, type ContextMenuItem, Modal, Input, Button } from '../ui'
 
-// Y2K-inspired color palette
 const PRESET_COLORS = [
-  '#ef4444', '#f97316', '#eab308', '#22c55e', '#14b8a6',
-  '#0ea5e9', '#6366f1', '#a855f7', '#ec4899',
+  '#0f172a', '#4c6fff', '#22c55e', '#eab308', '#f97316',
+  '#ef4444', '#a855f7', '#ec4899', '#14b8a6',
 ]
 
 interface SpaceItemProps {
@@ -31,7 +30,7 @@ export function SpaceItem({ space }: SpaceItemProps) {
   const isActive = activeSpaceId === space.id
 
   const handleContextMenu = (e: React.MouseEvent) => {
-    if (space.isDefault) return // Don't show context menu for default space
+    if (space.isDefault) return
 
     const items: ContextMenuItem[] = [
       {
@@ -75,28 +74,20 @@ export function SpaceItem({ space }: SpaceItemProps) {
     <>
       <button
         className={clsx(
-          'w-full px-4 py-2 flex items-center gap-2',
-          'text-sm text-left rounded-r-lg mr-2',
-          'transition-all',
+          'w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-sm transition-colors',
           isActive
-            ? 'bg-gradient-to-r from-[#e0f0ff] to-[#f0f8ff] border-l-4 text-accent-primary font-medium shadow-y2k-inset'
-            : 'hover:bg-[#e8f4fc] text-text-muted hover:text-text border-l-4 border-transparent'
+            ? 'bg-white/70 backdrop-blur-sm text-text font-medium shadow-soft'
+            : 'text-text-muted hover:bg-white/50 hover:text-text'
         )}
-        style={isActive && space.color ? { borderLeftColor: space.color } : isActive ? { borderLeftColor: 'var(--accent-primary)' } : undefined}
         onClick={() => setActiveSpace(space.id)}
         onContextMenu={handleContextMenu}
       >
-        {space.color && (
-          <span
-            className="w-2 h-2 rounded-full flex-shrink-0"
-            style={{ backgroundColor: space.color }}
-          />
-        )}
-        <span className="flex-shrink-0">
-          {space.icon || (space.isDefault ? '📥' : '📁')}
-        </span>
-        <span className="flex-1 truncate">{space.name}</span>
-        <span className="text-xs bg-[#e8f4fc] px-1.5 py-0.5 rounded-full text-text-muted">
+        <span
+          className="w-2 h-2 rounded-full flex-shrink-0"
+          style={{ backgroundColor: space.color || '#94a3b8' }}
+        />
+        <span className="flex-1 truncate text-left">{space.name}</span>
+        <span className="text-[11px] tabular-nums text-text-muted">
           {cardCount}
         </span>
       </button>
@@ -127,15 +118,15 @@ export function SpaceItem({ space }: SpaceItemProps) {
             />
           </div>
           <div>
-            <p className="text-sm text-text-muted mb-2">Color</p>
+            <p className="section-label mb-2">Color</p>
             <div className="flex gap-1.5 flex-wrap">
               {PRESET_COLORS.map((c) => (
                 <button
                   key={c}
                   type="button"
                   className={clsx(
-                    'w-6 h-6 rounded-full border-2 transition-transform',
-                    editColor === c ? 'border-white ring-2 ring-offset-1 ring-gray-400 scale-110' : 'border-transparent hover:scale-110'
+                    'w-7 h-7 rounded-full transition-transform',
+                    editColor === c ? 'ring-2 ring-offset-2 ring-text scale-110' : 'hover:scale-110'
                   )}
                   style={{ backgroundColor: c }}
                   onClick={() => setEditColor(editColor === c ? null : c)}

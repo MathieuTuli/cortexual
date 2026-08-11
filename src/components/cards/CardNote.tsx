@@ -5,13 +5,13 @@ interface CardNoteProps {
 }
 
 export function CardNote({ card }: CardNoteProps) {
-  const content = card.content.length > 300
-    ? card.content.slice(0, 300) + '...'
+  const content = card.content.length > 280
+    ? card.content.slice(0, 280) + '…'
     : card.content
 
   return (
-    <div className="text-sm whitespace-pre-wrap break-words text-text">
+    <p className="text-sm text-text whitespace-pre-wrap break-words leading-relaxed">
       {content}
-    </div>
+    </p>
   )
 }

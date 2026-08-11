@@ -38,6 +38,22 @@ interface LinkPreview {
   siteName?: string
 }
 
+// X's syndication API omits empty entity arrays, but react-tweet's enrichTweet
+// iterates them unconditionally and throws "entities is not iterable".
+function normalizeTweet(tweet: any): any {
+  if (!tweet || typeof tweet !== 'object') return tweet
+  const e = tweet.entities ?? {}
+  tweet.entities = {
+    ...e,
+    hashtags: Array.isArray(e.hashtags) ? e.hashtags : [],
+    user_mentions: Array.isArray(e.user_mentions) ? e.user_mentions : [],
+    urls: Array.isArray(e.urls) ? e.urls : [],
+    symbols: Array.isArray(e.symbols) ? e.symbols : [],
+  }
+  if (tweet.quoted_tweet) tweet.quoted_tweet = normalizeTweet(tweet.quoted_tweet)
+  return tweet
+}
+
 function decodeEntities(s: string): string {
   return s
     .replace(/&amp;/g, '&')
@@ -63,7 +79,29 @@ function pickMeta(html: string, names: string[]): string | undefined {
   return undefined
 }
 
+// YouTube serves a consent/JS shell to bots, so its watch pages carry no
+// scrapable og:title. oEmbed hands it over without auth.
+async function fetchYouTubeOEmbed(url: string): Promise<LinkPreview | null> {
+  const endpoint = `https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`
+  const res = await undiciFetch(endpoint, { redirect: 'follow' })
+  if (!res.ok) return null
+  const data = (await res.json()) as { title?: string; author_name?: string; thumbnail_url?: string }
+  if (!data.title) return null
+  return {
+    title: data.title,
+    description: data.author_name,
+    image: data.thumbnail_url,
+    siteName: 'YouTube',
+  }
+}
+
 async function fetchLinkPreview(url: string): Promise<LinkPreview> {
+  const hostname = new URL(url).hostname.replace(/^www\./, '')
+  if (hostname === 'youtube.com' || hostname === 'youtu.be' || hostname === 'm.youtube.com') {
+    const oembed = await fetchYouTubeOEmbed(url).catch(() => null)
+    if (oembed) return oembed
+  }
+
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), 8000)
   try {
@@ -109,6 +147,8 @@ async function fetchLinkPreview(url: string): Promise<LinkPreview> {
     clearTimeout(timeout)
   }
 }
+
+let mediaSequence = 0
 
 function fileStoragePlugin() {
   return {
@@ -308,7 +348,10 @@ function fileStoragePlugin() {
             const buffer = Buffer.concat(chunks)
             const contentType = req.headers['content-type'] || 'application/octet-stream'
             const ext = contentType.includes('png') ? '.png' : contentType.includes('gif') ? '.gif' : contentType.includes('webp') ? '.webp' : contentType.includes('video') ? '.mp4' : '.jpg'
-            const filename = `${Date.now()}${ext}`
+            // Uploading a gallery pushes several blobs at one card back to
+            // back; a bare timestamp lets same-millisecond writes clobber
+            // each other.
+            const filename = `${Date.now()}-${String(mediaSequence++).padStart(6, '0')}${ext}`
             fs.writeFileSync(path.join(cardMediaDir, filename), buffer)
             res.setHeader('Content-Type', 'application/json')
             res.end(JSON.stringify({ filename, cardId }))
@@ -325,7 +368,9 @@ function fileStoragePlugin() {
           const cardId = match[1]
           const cardMediaDir = path.join(MEDIA_DIR, cardId)
           if (fs.existsSync(cardMediaDir)) {
-            const files = fs.readdirSync(cardMediaDir)
+            // Filenames are timestamp-ordered, so sorting keeps a gallery in
+            // the order its images were added.
+            const files = fs.readdirSync(cardMediaDir).sort()
             res.setHeader('Content-Type', 'application/json')
             res.end(JSON.stringify(files.map(f => `/api/media/${cardId}/${f}`)))
           } else {
@@ -361,6 +406,7 @@ function fileStoragePlugin() {
           const id = match[1]
           try {
             const tweet = await fetchTweet(id)
+            if (tweet?.data) tweet.data = normalizeTweet(tweet.data)
             res.setHeader('Content-Type', 'application/json')
             res.setHeader('Cache-Control', 'public, max-age=86400, s-maxage=86400')
             res.end(JSON.stringify(tweet))

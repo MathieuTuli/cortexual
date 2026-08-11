@@ -9,54 +9,42 @@ interface CardMediaProps {
 export function CardMedia({ card }: CardMediaProps) {
   const [mediaUrls, setMediaUrls] = useState<string[]>([])
   const [loadError, setLoadError] = useState(false)
+  const [index, setIndex] = useState(0)
 
   useEffect(() => {
     let cancelled = false
-
     async function loadMedia() {
       try {
         const urls = await api.getMediaUrls(card.id)
         if (!cancelled) {
           setMediaUrls(urls)
-          if (urls.length === 0) {
-            setLoadError(true)
-          }
+          if (urls.length === 0) setLoadError(true)
         }
       } catch (error) {
         console.error('Failed to load media:', error)
         if (!cancelled) setLoadError(true)
       }
     }
-
     loadMedia()
-
-    return () => {
-      cancelled = true
-    }
+    return () => { cancelled = true }
   }, [card.id])
 
-  // For video cards
   if (card.type === 'video') {
     const src = mediaUrls[0] || card.thumbnailDataUrl
 
     if (!src && !loadError) {
-      return (
-        <div className="aspect-video bg-gradient-to-b from-[#e0ecf4] to-[#f8fcff] flex items-center justify-center border border-[#a8d4f0] rounded">
-          <span className="text-text-muted text-sm">Loading...</span>
-        </div>
-      )
+      return <div className="aspect-video bg-[#f3f4f6] animate-pulse" />
     }
-
     if (!src && loadError) {
       return (
-        <div className="aspect-video bg-gradient-to-b from-[#e0ecf4] to-[#f8fcff] flex items-center justify-center border border-[#a8d4f0] rounded">
-          <span className="text-text-muted text-sm">[video]</span>
+        <div className="aspect-video bg-[#f3f4f6] flex items-center justify-center text-text-muted text-xs">
+          [video unavailable]
         </div>
       )
     }
 
     return (
-      <div className="relative rounded overflow-hidden">
+      <div className="relative">
         {mediaUrls[0] ? (
           <video
             src={mediaUrls[0]}
@@ -70,55 +58,69 @@ export function CardMedia({ card }: CardMediaProps) {
             className="w-full aspect-video object-cover"
           />
         )}
-        <div className="absolute inset-0 flex items-center justify-center">
-          <span className="bg-gradient-to-b from-[#66ccff] to-[#0066cc] text-white px-3 py-1 text-sm rounded shadow-y2k">
-            ▶ Play
-          </span>
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className="w-10 h-10 rounded-full bg-white/90 flex items-center justify-center shadow-lg">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="text-[#0f172a] ml-0.5">
+              <path d="M6 4l14 8L6 20V4z" />
+            </svg>
+          </div>
         </div>
-        {card.caption && (
-          <p className="mt-2 text-xs text-text-muted">{card.caption}</p>
-        )}
       </div>
     )
   }
 
-  // For image cards
   const thumbnails = card.thumbnailDataUrls || []
   const sources = mediaUrls.length > 0 ? mediaUrls : thumbnails
-  const totalImages = Math.max(mediaUrls.length, thumbnails.length)
 
   if (sources.length === 0 && !loadError) {
+    return <div className="aspect-video bg-[#f3f4f6] animate-pulse" />
+  }
+  if (sources.length === 0 && loadError) {
     return (
-      <div className="aspect-video bg-gradient-to-b from-[#e0ecf4] to-[#f8fcff] flex items-center justify-center border border-[#a8d4f0] rounded">
-        <span className="text-text-muted text-sm">Loading...</span>
+      <div className="aspect-video bg-[#f3f4f6] flex items-center justify-center text-text-muted text-xs">
+        [image unavailable]
       </div>
     )
   }
 
-  if (sources.length === 0 && loadError) {
-    return (
-      <div className="aspect-video bg-gradient-to-b from-[#e0ecf4] to-[#f8fcff] flex items-center justify-center border border-[#a8d4f0] rounded">
-        <span className="text-text-muted text-sm">[image]</span>
-      </div>
-    )
+  const current = Math.min(index, sources.length - 1)
+
+  // Cycling happens inside the card, so these clicks must not reach the tile's
+  // open-in-modal handler.
+  const step = (e: React.MouseEvent, delta: number) => {
+    e.stopPropagation()
+    setIndex((i) => (Math.min(i, sources.length - 1) + delta + sources.length) % sources.length)
   }
 
   return (
-    <div className="rounded overflow-hidden">
-      <div className="relative">
-        <img
-          src={sources[0]}
-          alt={card.caption || 'Image'}
-          className="w-full object-cover"
-        />
-        {totalImages > 1 && (
-          <div className="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
-            +{totalImages - 1} more
+    <div className="relative group/media">
+      <img
+        src={sources[current]}
+        alt={card.caption || 'Image'}
+        className="w-full object-cover"
+      />
+      {sources.length > 1 && (
+        <>
+          <button
+            type="button"
+            onClick={(e) => step(e, -1)}
+            aria-label="Previous image"
+            className="absolute left-1.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-[#0f172a]/60 hover:bg-[#0f172a]/85 text-white text-base leading-none flex items-center justify-center backdrop-blur-sm opacity-0 group-hover/media:opacity-100 transition-opacity"
+          >
+            ‹
+          </button>
+          <button
+            type="button"
+            onClick={(e) => step(e, 1)}
+            aria-label="Next image"
+            className="absolute right-1.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-[#0f172a]/60 hover:bg-[#0f172a]/85 text-white text-base leading-none flex items-center justify-center backdrop-blur-sm opacity-0 group-hover/media:opacity-100 transition-opacity"
+          >
+            ›
+          </button>
+          <div className="absolute bottom-2 right-2 bg-[#0f172a]/70 text-white text-[10px] font-medium tabular-nums px-2 py-0.5 rounded-full backdrop-blur-sm">
+            {current + 1}/{sources.length}
           </div>
-        )}
-      </div>
-      {card.caption && (
-        <p className="mt-2 text-xs text-text-muted">{card.caption}</p>
+        </>
       )}
     </div>
   )

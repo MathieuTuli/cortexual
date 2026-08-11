@@ -1,6 +1,7 @@
 import { Sidebar } from './Sidebar'
-import { Header } from './Header'
-import { MasonryGrid } from './MasonryGrid'
+import { TopBar } from './TopBar'
+import { CardsView } from './CardsView'
+import { RightRail } from './RightRail'
 import { CreateCardModal } from '../modals/CreateCardModal'
 import { EditCardModal } from '../modals/EditCardModal'
 import { CardViewModal } from '../modals/CardViewModal'
@@ -14,12 +15,17 @@ export function AppShell() {
 
   return (
     <div className="h-screen flex overflow-hidden">
-      <Sidebar />
-      <div className="flex-1 flex flex-col min-w-0">
-        <Header />
-        <main className="flex-1 p-6 overflow-y-auto overflow-x-hidden">
-          <MasonryGrid />
-        </main>
+      <div className="glass-divider-r flex">
+        <Sidebar />
+      </div>
+      <main className="flex-1 overflow-y-auto overflow-x-hidden">
+        <div className="px-8 pt-6 pb-12 max-w-[1400px]">
+          <TopBar />
+          <CardsView />
+        </div>
+      </main>
+      <div className="glass-divider-l flex">
+        <RightRail />
       </div>
       {isCreateModalOpen && <CreateCardModal />}
       {isEditModalOpen && <EditCardModal />}

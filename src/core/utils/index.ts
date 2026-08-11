@@ -1,4 +1,6 @@
 export * from './id'
+export * from './clipboard'
 export * from './url-parser'
 export * from './csv'
 export * from './import-export'
+export * from './time-ago'

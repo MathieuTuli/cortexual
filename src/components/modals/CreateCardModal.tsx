@@ -1,18 +1,54 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { useAppStore, useCardsStore, useSpacesStore } from '@/core/stores'
+import type { NewCard } from '@/core/stores/cards-store'
 import type { CardType, CreateCardInput } from '@/core/types'
 import { DEFAULT_SPACE_ID } from '@/core/types'
-import { parseUrl, getYouTubeThumbnail } from '@/core/utils'
+import { parseUrl, getYouTubeThumbnail, filesFromClipboard, isImage, isMedia } from '@/core/utils'
 import { api } from '@/core/api'
 import { Modal, Button, Input, Textarea, TagInput } from '../ui'
 import { useDropzone } from 'react-dropzone'
 import { clsx } from 'clsx'
+
+const MEDIA_ACCEPT = {
+  'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.webp'],
+  'video/*': ['.mp4', '.webm', '.mov'],
+}
+
+// A batch is one paste or one drop — everything that arrived together.
+interface StagedMedia {
+  file: File
+  preview: string
+  batch: number
+}
+
+type GroupMode = 'file' | 'batch' | 'all'
+
+const GROUP_MODES: { mode: GroupMode; label: string; hint: string }[] = [
+  { mode: 'file', label: 'Per image', hint: 'Every image becomes its own card' },
+  { mode: 'batch', label: 'Per paste', hint: 'Images pasted or dropped together share a card' },
+  { mode: 'all', label: 'One card', hint: 'All images go into a single card' },
+]
+
+function groupImages(images: StagedMedia[], mode: GroupMode): StagedMedia[][] {
+  if (images.length === 0) return []
+  if (mode === 'all') return [images]
+  if (mode === 'file') return images.map((image) => [image])
+
+  const batches = new Map<number, StagedMedia[]>()
+  for (const image of images) {
+    const batch = batches.get(image.batch)
+    if (batch) batch.push(image)
+    else batches.set(image.batch, [image])
+  }
+  return Array.from(batches.values())
+}
 
 export function CreateCardModal() {
   const isOpen = useAppStore((s) => s.isCreateModalOpen)
   const closeModal = useAppStore((s) => s.closeCreateModal)
   const defaultType = useAppStore((s) => s.createModalDefaultType)
   const createCard = useCardsStore((s) => s.createCard)
+  const createCards = useCardsStore((s) => s.createCards)
   const spaces = useSpacesStore((s) => s.spaces)
   const activeSpaceId = useSpacesStore((s) => s.activeSpaceId)
   const cards = useCardsStore((s) => s.cards)
@@ -27,9 +63,18 @@ export function CreateCardModal() {
   const [caption, setCaption] = useState('')
   const [tags, setTags] = useState<string[]>([])
   const [spaceId, setSpaceId] = useState(activeSpaceId || DEFAULT_SPACE_ID)
-  const [mediaFiles, setMediaFiles] = useState<File[]>([])
-  const [mediaPreviews, setMediaPreviews] = useState<string[]>([])
+  const [staged, setStaged] = useState<StagedMedia[]>([])
+  const [groupMode, setGroupMode] = useState<GroupMode>('file')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
+  const batchCounter = useRef(0)
+
+  const isMediaType = cardType === 'image' || cardType === 'video'
+  const stagedImages = staged.filter((s) => isImage(s.file))
+  const stagedVideos = staged.filter((s) => !isImage(s.file))
+  const imageGroups = groupImages(stagedImages, groupMode)
+  const cardCount = imageGroups.length + stagedVideos.length
+  const showGroupLabels = imageGroups.some((group) => group.length > 1)
 
   // Sync cardType with defaultType when modal opens
   useEffect(() => {
@@ -38,62 +83,42 @@ export function CreateCardModal() {
     }
   }, [isOpen, defaultType])
 
-  // Handle paste for images
+  const addFiles = useCallback((files: File[]) => {
+    if (files.length === 0) return
+    const batch = ++batchCounter.current
+    setStaged((prev) => [
+      ...prev,
+      ...files.map((file) => ({ file, preview: URL.createObjectURL(file), batch })),
+    ])
+  }, [])
+
   useEffect(() => {
-    if (!isOpen || cardType !== 'image') return
+    if (!isOpen || !isMediaType) return
 
     const handlePaste = (e: ClipboardEvent) => {
-      const items = e.clipboardData?.items
-      if (!items) return
-
-      for (const item of items) {
-        if (item.type.startsWith('image/')) {
-          e.preventDefault()
-          const file = item.getAsFile()
-          if (file) {
-            setMediaFiles((prev) => [...prev, file])
-            const previewUrl = URL.createObjectURL(file)
-            setMediaPreviews((prev) => [...prev, previewUrl])
-          }
-          break
-        }
-      }
+      const files = filesFromClipboard(e.clipboardData, isMedia)
+      if (files.length === 0) return
+      e.preventDefault()
+      addFiles(files)
     }
 
     window.addEventListener('paste', handlePaste)
     return () => window.removeEventListener('paste', handlePaste)
-  }, [isOpen, cardType])
+  }, [isOpen, isMediaType, addFiles])
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
-    if (cardType === 'image') {
-      // For images, allow multiple files
-      const newPreviews = acceptedFiles.map((file) => URL.createObjectURL(file))
-      setMediaFiles((prev) => [...prev, ...acceptedFiles])
-      setMediaPreviews((prev) => [...prev, ...newPreviews])
-    } else {
-      // For video, only allow one file
-      const file = acceptedFiles[0]
-      if (file) {
-        // Clean up old preview
-        mediaPreviews.forEach((url) => URL.revokeObjectURL(url))
-        setMediaFiles([file])
-        setMediaPreviews([URL.createObjectURL(file)])
-      }
-    }
-  }, [cardType, mediaPreviews])
+    addFiles(acceptedFiles.filter(isMedia))
+  }, [addFiles])
 
-  const removeImage = (index: number) => {
-    URL.revokeObjectURL(mediaPreviews[index])
-    setMediaFiles((prev) => prev.filter((_, i) => i !== index))
-    setMediaPreviews((prev) => prev.filter((_, i) => i !== index))
+  const removeMedia = (preview: string) => {
+    URL.revokeObjectURL(preview)
+    setStaged((prev) => prev.filter((item) => item.preview !== preview))
   }
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
-    accept: cardType === 'image'
-      ? { 'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.webp'] }
-      : { 'video/*': ['.mp4', '.webm', '.mov'] },
-    multiple: cardType === 'image',
+    accept: MEDIA_ACCEPT,
+    multiple: true,
   })
 
   const addTag = (tag: string) => {
@@ -114,14 +139,43 @@ export function CreateCardModal() {
     setCaption('')
     setTags([])
     setSpaceId(activeSpaceId || DEFAULT_SPACE_ID)
-    mediaPreviews.forEach((url) => URL.revokeObjectURL(url))
-    setMediaFiles([])
-    setMediaPreviews([])
+    staged.forEach((item) => URL.revokeObjectURL(item.preview))
+    setStaged([])
+    setGroupMode('file')
+    setProgress(null)
+    batchCounter.current = 0
   }
 
   const handleClose = () => {
     reset()
     closeModal()
+  }
+
+  // Images become cards at whatever granularity groupMode asks for; a video
+  // card holds one file, so videos are always one apiece.
+  const buildMediaCards = async (): Promise<NewCard[]> => {
+    const shared = { spaceId, title: title || undefined, caption: caption || undefined, tags, subnotes: [] }
+    const thumbnails = new Map<File, string>()
+    for (const { file } of stagedImages) {
+      thumbnails.set(file, await generateThumbnail(file))
+    }
+
+    const imageCards: NewCard[] = imageGroups.map((group) => ({
+      input: {
+        ...shared,
+        type: 'image' as const,
+        mediaIds: [],
+        thumbnailDataUrls: group.map(({ file }) => thumbnails.get(file)!),
+      },
+      blobs: group.map(({ file }) => file),
+    }))
+
+    const videoCards: NewCard[] = stagedVideos.map(({ file }) => ({
+      input: { ...shared, type: 'video' as const, mediaId: '' },
+      blobs: [file],
+    }))
+
+    return [...imageCards, ...videoCards]
   }
 
   const handleSubmit = async () => {
@@ -140,37 +194,8 @@ export function CreateCardModal() {
           subnotes: [],
         }
         await createCard(input)
-      } else if (cardType === 'image' && mediaFiles.length > 0) {
-        const thumbnailDataUrls: string[] = []
-        for (const file of mediaFiles) {
-          if (file.type.startsWith('image/')) {
-            const thumbnail = await generateThumbnail(file)
-            thumbnailDataUrls.push(thumbnail)
-          }
-        }
-
-        input = {
-          type: 'image',
-          spaceId,
-          title: title || undefined,
-          mediaIds: [],
-          caption: caption || undefined,
-          thumbnailDataUrls,
-          tags,
-          subnotes: [],
-        }
-        await createCard(input, mediaFiles)
-      } else if (cardType === 'video' && mediaFiles.length > 0) {
-        input = {
-          type: 'video',
-          spaceId,
-          title: title || undefined,
-          mediaId: '',
-          caption: caption || undefined,
-          tags,
-          subnotes: [],
-        }
-        await createCard(input, mediaFiles[0])
+      } else if (isMediaType && staged.length > 0) {
+        await createCards(await buildMediaCards(), (done, total) => setProgress({ done, total }))
       } else if (cardType === 'link') {
         const parsed = parseUrl(url)
 
@@ -212,7 +237,7 @@ export function CreateCardModal() {
 
   const isValid = () => {
     if (cardType === 'note') return content.trim().length > 0
-    if (cardType === 'image' || cardType === 'video') return mediaFiles.length > 0
+    if (isMediaType) return staged.length > 0
     if (cardType === 'link') return url.trim().length > 0
     return false
   }
@@ -227,20 +252,19 @@ export function CreateCardModal() {
   const cardTypes: CardType[] = ['note', 'image', 'video', 'link']
 
   return (
-    <Modal open={isOpen} onOpenChange={handleClose} title="New Card">
+    <Modal open={isOpen} onOpenChange={handleClose} title="New card">
       <div className="min-h-[200px]">
-        {/* Tab Buttons - Simple implementation without Radix */}
-        <div className="flex gap-1 mb-4">
+        <div className="inline-flex p-1 mb-4 bg-[#f3f4f6] rounded-full">
           {cardTypes.map((type) => (
             <button
               key={type}
               type="button"
               onClick={() => setCardType(type)}
               className={clsx(
-                'flex-1 py-2 px-3 text-sm font-medium rounded transition-all',
+                'px-3.5 py-1.5 text-xs font-medium rounded-full transition-colors',
                 cardType === type
-                  ? 'bg-gradient-to-b from-[#66ccff] to-[#0066cc] text-white shadow-y2k'
-                  : 'bg-gradient-to-b from-white to-[#e8f4fc] text-text-muted border border-[#a8d4f0] hover:border-accent-primary'
+                  ? 'bg-white text-text shadow-soft'
+                  : 'text-text-muted hover:text-text'
               )}
             >
               {tabIcons[type]} {type.charAt(0).toUpperCase() + type.slice(1)}
@@ -259,76 +283,84 @@ export function CreateCardModal() {
             />
           )}
 
-          {cardType === 'image' && (
+          {isMediaType && (
             <>
               <div
                 {...getRootProps()}
                 className={clsx(
-                  'rounded-lg p-8 text-center cursor-pointer transition-all',
-                  'bg-gradient-to-b from-[#e0ecf4] to-white',
-                  'border-2 border-dashed',
+                  'rounded-xl p-8 text-center cursor-pointer transition-all',
+                  'bg-[#f9fafb] border-2 border-dashed',
                   isDragActive
-                    ? 'border-accent-primary bg-[#e0f0ff]'
-                    : 'border-[#a8d4f0] hover:border-accent-secondary'
+                    ? 'border-accent-primary bg-[#eef2ff]'
+                    : 'border-[var(--color-border-bold)] hover:border-accent-primary'
                 )}
               >
                 <input {...getInputProps()} />
                 <div>
-                  <p className="text-3xl mb-2">🖼️</p>
+                  <p className="text-3xl mb-2">{cardType === 'image' ? '🖼️' : '🎬'}</p>
                   <p className="text-text-muted">
-                    {isDragActive ? 'Drop images here!' : 'Drag & drop, click to select, or paste (multiple allowed)'}
+                    {isDragActive
+                      ? 'Drop them here!'
+                      : 'Drag & drop, click to select, or paste — as many as you like'}
                   </p>
                 </div>
               </div>
-              {mediaPreviews.length > 0 && (
-                <div className="grid grid-cols-3 gap-2">
-                  {mediaPreviews.map((preview, index) => (
-                    <div key={index} className="relative group">
-                      <img src={preview} alt={`Preview ${index + 1}`} className="w-full h-24 object-cover rounded border border-[#a8d4f0]" />
-                      <button
-                        type="button"
-                        onClick={() => removeImage(index)}
-                        className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white rounded-full text-xs opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-              <Input
-                placeholder="Caption (optional)"
-                value={caption}
-                onChange={(e) => setCaption(e.target.value)}
-              />
-            </>
-          )}
 
-          {cardType === 'video' && (
-            <>
-              <div
-                {...getRootProps()}
-                className={clsx(
-                  'rounded-lg p-8 text-center cursor-pointer transition-all',
-                  'bg-gradient-to-b from-[#e0ecf4] to-white',
-                  'border-2 border-dashed',
-                  isDragActive
-                    ? 'border-accent-primary bg-[#e0f0ff]'
-                    : 'border-[#a8d4f0] hover:border-accent-secondary'
-                )}
-              >
-                <input {...getInputProps()} />
-                {mediaPreviews.length > 0 ? (
-                  <video src={mediaPreviews[0]} className="max-h-48 mx-auto rounded" controls />
-                ) : (
-                  <div>
-                    <p className="text-3xl mb-2">🎬</p>
-                    <p className="text-text-muted">
-                      {isDragActive ? 'Drop video here!' : 'Drag & drop or click to select'}
+              {staged.length > 0 && (
+                <>
+                  <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <p className="section-label">
+                      {staged.length} file{staged.length === 1 ? '' : 's'} → {cardCount} card
+                      {cardCount === 1 ? '' : 's'}
                     </p>
+                    {stagedImages.length > 1 && (
+                      <div className="inline-flex p-0.5 bg-[#f3f4f6] rounded-full">
+                        {GROUP_MODES.map(({ mode, label, hint }) => (
+                          <button
+                            key={mode}
+                            type="button"
+                            title={hint}
+                            onClick={() => setGroupMode(mode)}
+                            className={clsx(
+                              'px-2.5 py-1 text-[11px] font-medium rounded-full transition-colors',
+                              groupMode === mode
+                                ? 'bg-white text-text shadow-soft'
+                                : 'text-text-muted hover:text-text'
+                            )}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
+
+                  <div className="space-y-3 max-h-64 overflow-y-auto">
+                    {showGroupLabels ? (
+                      <>
+                        {imageGroups.map((group, i) => (
+                          <StagedGroup
+                            key={group[0].preview}
+                            label={`Card ${i + 1} · ${group.length} image${group.length === 1 ? '' : 's'}`}
+                            items={group}
+                            onRemove={removeMedia}
+                          />
+                        ))}
+                        {stagedVideos.length > 0 && (
+                          <StagedGroup
+                            label={`${stagedVideos.length} video card${stagedVideos.length === 1 ? '' : 's'}`}
+                            items={stagedVideos}
+                            onRemove={removeMedia}
+                          />
+                        )}
+                      </>
+                    ) : (
+                      <StagedGrid items={staged} onRemove={removeMedia} />
+                    )}
+                  </div>
+                </>
+              )}
+
               <Input
                 placeholder="Caption (optional)"
                 value={caption}
@@ -345,8 +377,8 @@ export function CreateCardModal() {
                 onChange={(e) => setUrl(e.target.value)}
               />
               {url && (
-                <div className="p-3 bg-gradient-to-b from-[#e8f4fc] to-white rounded border border-[#a8d4f0]">
-                  <p className="text-sm text-text-muted">
+                <div className="px-3.5 py-2 rounded-lg bg-[#f9fafb] border border-[var(--color-border)]">
+                  <p className="text-xs text-text-muted">
                     Detected: <span className="font-medium text-accent-primary">{parseUrl(url).embedType}</span>
                   </p>
                 </div>
@@ -355,32 +387,27 @@ export function CreateCardModal() {
           )}
         </div>
 
-        {/* Common Fields */}
-        <div className="space-y-4 mt-6 pt-4 border-t-2 border-[#a8d4f0]">
+        <div className="space-y-4 mt-6 pt-4 border-t border-[var(--color-border)]">
           <Input
             placeholder="Title (optional)"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
           />
 
-          {/* Tags */}
           <TagInput
             tags={tags}
             availableTags={allTags}
             onAddTag={addTag}
             onRemoveTag={removeTag}
-            label="🏷️ Tags"
+            label="Tags"
           />
 
-          {/* Space selector */}
           <div>
-            <label className="block text-xs font-medium text-text-muted mb-1">
-              📂 Space
-            </label>
+            <label className="section-label block mb-1.5">Space</label>
             <select
               value={spaceId}
               onChange={(e) => setSpaceId(e.target.value)}
-              className="w-full px-3 py-2 rounded bg-gradient-to-b from-[#e0ecf4] to-white border-2 border-[#88b0d0] text-text focus:outline-none focus:ring-2 focus:ring-accent-secondary"
+              className="w-full px-3.5 py-2 rounded-lg bg-white border border-[var(--color-border)] text-sm text-text focus:outline-none focus:border-accent-primary focus:ring-2 focus:ring-accent-primary/20 hover:border-[var(--color-border-bold)]"
             >
               {spaces.map((space) => (
                 <option key={space.id} value={space.id}>
@@ -391,8 +418,7 @@ export function CreateCardModal() {
           </div>
         </div>
 
-        {/* Actions */}
-        <div className="flex justify-end gap-3 mt-6">
+        <div className="flex justify-end gap-2 mt-6">
           <Button variant="ghost" onClick={handleClose}>
             Cancel
           </Button>
@@ -401,11 +427,57 @@ export function CreateCardModal() {
             onClick={handleSubmit}
             disabled={!isValid() || isSubmitting}
           >
-            {isSubmitting ? '⏳ Saving...' : '💾 Save Card'}
+            {isSubmitting
+              ? progress ? `Saving ${progress.done}/${progress.total}…` : 'Saving…'
+              : isMediaType && cardCount > 1 ? `Save ${cardCount} cards` : 'Save'}
           </Button>
         </div>
       </div>
     </Modal>
+  )
+}
+
+interface StagedGridProps {
+  items: StagedMedia[]
+  onRemove: (preview: string) => void
+}
+
+function StagedGrid({ items, onRemove }: StagedGridProps) {
+  return (
+    <div className="grid grid-cols-4 gap-2">
+      {items.map(({ file, preview }) => (
+        <div key={preview} className="relative group">
+          {isImage(file) ? (
+            <img
+              src={preview}
+              alt={file.name}
+              className="w-full h-20 object-cover rounded-lg border border-[var(--color-border)]"
+            />
+          ) : (
+            <video
+              src={preview}
+              className="w-full h-20 object-cover rounded-lg border border-[var(--color-border)] bg-black"
+            />
+          )}
+          <button
+            type="button"
+            onClick={() => onRemove(preview)}
+            className="absolute top-1 right-1 w-5 h-5 bg-[#0f172a]/80 text-white rounded-full text-xs opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+          >
+            ×
+          </button>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function StagedGroup({ label, items, onRemove }: StagedGridProps & { label: string }) {
+  return (
+    <div className="rounded-xl border border-[var(--color-border)] p-2">
+      <p className="text-[10px] uppercase tracking-wider text-text-muted mb-1.5 px-0.5">{label}</p>
+      <StagedGrid items={items} onRemove={onRemove} />
+    </div>
   )
 }
 

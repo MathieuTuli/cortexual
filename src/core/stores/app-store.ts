@@ -1,9 +1,13 @@
 import { create } from 'zustand'
-import type { CardType } from '../types'
+import type { CardType, ViewMode } from '../types'
 
 // Zoom level 1 = most zoomed out (more columns, smaller cards)
 // Zoom level 5 = most zoomed in (fewer columns, larger cards)
 export type ZoomLevel = 1 | 2 | 3 | 4 | 5
+
+// Real spaces persist their view mode in spaces.json; "All cards" has no
+// record to hang it off, so it lives here.
+const ALL_CARDS_VIEW_MODE_KEY = 'cortexual:all-cards-view-mode'
 
 interface AppState {
   isCreateModalOpen: boolean
@@ -19,6 +23,9 @@ interface AppState {
 
   // Zoom state
   zoomLevel: ZoomLevel
+
+  // View mode for the "All cards" pseudo-space
+  allCardsViewMode: ViewMode
 
   openCreateModal: (defaultType?: CardType) => void
   closeCreateModal: () => void
@@ -39,6 +46,8 @@ interface AppState {
   zoomIn: () => void
   zoomOut: () => void
   setZoomLevel: (level: ZoomLevel) => void
+
+  setAllCardsViewMode: (mode: ViewMode) => void
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -55,6 +64,8 @@ export const useAppStore = create<AppState>((set) => ({
 
   // Zoom state (default to middle zoom level)
   zoomLevel: 3,
+
+  allCardsViewMode: localStorage.getItem(ALL_CARDS_VIEW_MODE_KEY) === 'list' ? 'list' : 'grid',
 
   openCreateModal: (defaultType = 'note') => {
     set({ isCreateModalOpen: true, createModalDefaultType: defaultType })
@@ -140,5 +151,10 @@ export const useAppStore = create<AppState>((set) => ({
 
   setZoomLevel: (level) => {
     set({ zoomLevel: level })
+  },
+
+  setAllCardsViewMode: (mode) => {
+    localStorage.setItem(ALL_CARDS_VIEW_MODE_KEY, mode)
+    set({ allCardsViewMode: mode })
   },
 }))

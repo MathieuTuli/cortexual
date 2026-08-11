@@ -84,11 +84,7 @@ export function TagInput({
 
   return (
     <div className="space-y-2">
-      {label && (
-        <label className="block text-xs font-medium text-text-muted">
-          {label}
-        </label>
-      )}
+      {label && <label className="section-label block">{label}</label>}
       <div className="flex flex-wrap gap-1.5 min-h-[24px]">
         {tags.map((tag) => (
           <Tag key={tag} onRemove={() => onRemoveTag(tag)}>
@@ -109,7 +105,7 @@ export function TagInput({
             <button
               type="button"
               onClick={toggleFullDropdown}
-              className="px-2 bg-gradient-to-b from-white to-[#e8f4fc] border-2 border-[#a8d4f0] rounded hover:border-accent-primary transition-colors"
+              className="px-2.5 bg-white border border-[var(--color-border)] rounded-lg hover:border-accent-primary text-text-muted text-xs transition-colors"
               title="Show existing tags"
             >
               ▼
@@ -117,12 +113,12 @@ export function TagInput({
           )}
         </div>
         {showDropdown && dropdownTags.length > 0 && (
-          <div className="absolute left-0 right-0 mt-1 max-h-48 overflow-y-auto py-1 bg-gradient-to-b from-white to-[#f0f8ff] rounded-lg border-2 border-t-[#ffffff] border-l-[#d0e8ff] border-b-[#88b0d0] border-r-[#88b0d0] shadow-y2k z-50">
+          <div className="absolute left-0 right-0 mt-1 max-h-48 overflow-y-auto py-1 bg-white rounded-lg border border-[var(--color-border)] shadow-card z-50">
             {dropdownTags.map((tag) => (
               <button
                 key={tag}
                 type="button"
-                className="w-full px-3 py-1.5 text-left text-sm text-text hover:bg-[#e0f0ff] transition-colors"
+                className="w-full px-3.5 py-1.5 text-left text-sm text-text hover:bg-[#f3f4f6] transition-colors"
                 onClick={() => handleAddTag(tag)}
               >
                 {tag}

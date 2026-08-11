@@ -105,7 +105,7 @@ export function CardViewModal() {
                 {blobUrls.length > 1 && (
                   <button
                     onClick={() => setCurrentImageIndex((prev) => (prev - 1 + blobUrls.length) % blobUrls.length)}
-                    className="absolute left-0 z-10 w-10 h-10 flex items-center justify-center bg-black/50 hover:bg-black/70 text-white rounded-full transition-colors"
+                    className="absolute left-2 z-10 w-9 h-9 flex items-center justify-center bg-[#0f172a]/60 hover:bg-[#0f172a]/80 text-white rounded-full transition-colors backdrop-blur-sm"
                   >
                     ‹
                   </button>
@@ -118,7 +118,7 @@ export function CardViewModal() {
                 {blobUrls.length > 1 && (
                   <button
                     onClick={() => setCurrentImageIndex((prev) => (prev + 1) % blobUrls.length)}
-                    className="absolute right-0 z-10 w-10 h-10 flex items-center justify-center bg-black/50 hover:bg-black/70 text-white rounded-full transition-colors"
+                    className="absolute right-2 z-10 w-9 h-9 flex items-center justify-center bg-[#0f172a]/60 hover:bg-[#0f172a]/80 text-white rounded-full transition-colors backdrop-blur-sm"
                   >
                     ›
                   </button>
@@ -131,10 +131,10 @@ export function CardViewModal() {
                     <button
                       key={index}
                       onClick={() => setCurrentImageIndex(index)}
-                      className={`flex-shrink-0 w-16 h-16 rounded overflow-hidden border-2 transition-all ${
+                      className={`flex-shrink-0 w-14 h-14 rounded-lg overflow-hidden border-2 transition-all ${
                         index === currentImageIndex
-                          ? 'border-accent-primary ring-2 ring-accent-secondary'
-                          : 'border-[#a8d4f0] opacity-70 hover:opacity-100'
+                          ? 'border-accent-primary'
+                          : 'border-transparent opacity-60 hover:opacity-100'
                       }`}
                     >
                       <img src={url} alt={`Thumbnail ${index + 1}`} className="w-full h-full object-cover" />
@@ -170,7 +170,7 @@ export function CardViewModal() {
                 <TwitterEmbed tweetId={card.embedData.tweetId as string} />
               )}
               {card.embedType !== 'youtube' && card.embedType !== 'twitter' && (
-                <div className="rounded-lg border-2 border-[#a8d4f0] overflow-hidden bg-white">
+                <div className="rounded-2xl border border-[var(--color-border)] overflow-hidden bg-white">
                   {card.preview?.image && (
                     <img
                       src={card.preview.image}
@@ -179,14 +179,12 @@ export function CardViewModal() {
                       onError={(e) => { e.currentTarget.style.display = 'none' }}
                     />
                   )}
-                  <div className="p-4 space-y-2">
+                  <div className="p-5 space-y-2">
                     {card.preview?.siteName && (
-                      <p className="text-xs uppercase tracking-wide text-accent-secondary font-semibold">
-                        🔗 {card.preview.siteName}
-                      </p>
+                      <p className="section-label">{card.preview.siteName}</p>
                     )}
                     {(card.preview?.title || card.title) && (
-                      <p className="text-base font-medium text-text leading-snug">
+                      <p className="text-base font-semibold text-text leading-snug">
                         {card.preview?.title || card.title}
                       </p>
                     )}
@@ -202,7 +200,7 @@ export function CardViewModal() {
                 href={card.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="block p-3 bg-gradient-to-b from-[#e8f4fc] to-white rounded-lg border border-[#a8d4f0] hover:border-accent-primary transition-colors"
+                className="block px-3.5 py-2.5 rounded-lg bg-[#f9fafb] border border-[var(--color-border)] hover:border-accent-primary transition-colors"
                 onClick={(e) => e.stopPropagation()}
               >
                 <p className="text-sm text-accent-primary break-all">↗ {card.url}</p>
@@ -218,26 +216,24 @@ export function CardViewModal() {
           )}
         </div>
 
-        {/* Tags - Editable */}
-        <div className="pt-3 border-t border-[#a8d4f0]">
+        <div className="pt-4 border-t border-[var(--color-border)]">
           <TagInput
             tags={tags}
             availableTags={allTags}
             onAddTag={addTag}
             onRemoveTag={removeTag}
-            label="🏷️ Tags"
+            label="Tags"
           />
         </div>
 
-        {/* Subnotes */}
         {card.subnotes.length > 0 && (
-          <div className="pt-3 border-t border-[#a8d4f0]">
-            <p className="text-xs font-medium text-text-muted mb-2">Subnotes</p>
+          <div className="pt-4 border-t border-[var(--color-border)]">
+            <p className="section-label mb-2">Subnotes</p>
             <div className="space-y-2">
               {card.subnotes.map((subnote) => (
                 <div
                   key={subnote.id}
-                  className="p-2 bg-gradient-to-b from-[#f0f8ff] to-white rounded border border-[#a8d4f0] text-sm"
+                  className="p-3 bg-[#f9fafb] rounded-lg border border-[var(--color-border)] text-sm"
                 >
                   {subnote.content}
                 </div>
@@ -246,24 +242,23 @@ export function CardViewModal() {
           </div>
         )}
 
-        {/* Metadata */}
-        <div className="flex items-center justify-between text-xs text-text-muted pt-3 border-t border-[#a8d4f0]">
-          <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between text-xs text-text-muted pt-4 border-t border-[var(--color-border)]">
+          <div className="flex items-center gap-3">
             {space && (
-              <span className="bg-[#e8f4fc] px-2 py-0.5 rounded">
-                {space.icon || '📁'} {space.name}
+              <span className="inline-flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: space.color || '#94a3b8' }} />
+                {space.name}
               </span>
             )}
             <span>{new Date(card.createdAt).toLocaleDateString()}</span>
           </div>
         </div>
 
-        {/* Actions */}
         <div className="flex justify-between pt-3">
           <Button variant="danger" onClick={handleDelete}>
             Delete
           </Button>
-          <div className="flex gap-3">
+          <div className="flex gap-2">
             <Button variant="ghost" onClick={closeModal}>
               Close
             </Button>

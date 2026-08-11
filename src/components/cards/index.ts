@@ -1,4 +1,6 @@
 export { Card } from './Card'
+export { CardRow } from './CardRow'
 export { CardNote } from './CardNote'
 export { CardMedia } from './CardMedia'
 export { CardLink } from './CardLink'
+export { useCardActions } from './use-card-actions'

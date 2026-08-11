@@ -103,6 +103,14 @@ export const api = {
     return res.json()
   },
 
+  async getTweet(id: string): Promise<{
+    data?: { text?: string; user?: { name?: string; screen_name?: string } }
+  } | null> {
+    const res = await fetch(`${API_BASE}/tweet/${id}`)
+    if (!res.ok) return null
+    return res.json()
+  },
+
   async getLinkPreview(url: string): Promise<{
     title?: string
     description?: string

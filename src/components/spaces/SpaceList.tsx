@@ -2,7 +2,6 @@ import { useSpacesStore } from '@/core/stores'
 import { SpaceItem } from './SpaceItem'
 import { SpaceForm } from './SpaceForm'
 import { useState, useRef } from 'react'
-import { Button } from '../ui'
 
 export function SpaceList() {
   const spaces = useSpacesStore((s) => s.spaces)
@@ -16,7 +15,6 @@ export function SpaceList() {
     setDraggedIndex(index)
     dragNodeRef.current = e.target as HTMLDivElement
     e.dataTransfer.effectAllowed = 'move'
-    // Add a slight delay to allow the drag image to be captured
     setTimeout(() => {
       if (dragNodeRef.current) {
         dragNodeRef.current.style.opacity = '0.5'
@@ -47,14 +45,19 @@ export function SpaceList() {
   }
 
   return (
-    <div className="py-2">
-      <div className="px-4 py-2 flex items-center justify-between">
-        <span className="text-xs font-bold text-text-muted uppercase tracking-wider">
-          📂 Spaces
-        </span>
+    <div className="px-3">
+      <div className="px-3 pb-2 flex items-center justify-between">
+        <span className="section-label">Spaces</span>
+        <button
+          onClick={() => setShowForm(true)}
+          className="w-5 h-5 rounded flex items-center justify-center text-text-muted hover:text-text hover:bg-white/50 transition-colors"
+          title="New space"
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+        </button>
       </div>
 
-      <div className="space-y-1">
+      <div className="space-y-0.5">
         {spaces.map((space, index) => (
           <div
             key={space.id}
@@ -65,7 +68,7 @@ export function SpaceList() {
             onDrop={(e) => handleDrop(e, index)}
             className={
               dragOverIndex === index && draggedIndex !== index
-                ? 'border-t-2 border-accent-primary'
+                ? 'border-t border-accent-primary'
                 : ''
             }
           >
@@ -74,20 +77,9 @@ export function SpaceList() {
         ))}
       </div>
 
-      {showForm ? (
-        <div className="px-3 py-2">
+      {showForm && (
+        <div className="px-2 py-2">
           <SpaceForm onClose={() => setShowForm(false)} />
-        </div>
-      ) : (
-        <div className="px-3 py-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="w-full"
-            onClick={() => setShowForm(true)}
-          >
-            ➕ New Space
-          </Button>
         </div>
       )}
     </div>

@@ -11,7 +11,6 @@ interface ModalProps {
 }
 
 export function Modal({ open, onOpenChange, title, children, className }: ModalProps) {
-  // Handle escape key
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && open) {
@@ -22,7 +21,6 @@ export function Modal({ open, onOpenChange, title, children, className }: ModalP
     return () => window.removeEventListener('keydown', handleEscape)
   }, [open, onOpenChange])
 
-  // Prevent body scroll when modal is open
   useEffect(() => {
     if (open) {
       document.body.style.overflow = 'hidden'
@@ -37,48 +35,38 @@ export function Modal({ open, onOpenChange, title, children, className }: ModalP
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-50">
-      {/* Overlay */}
+    <div className="fixed inset-0 z-50 animate-fade-in">
       <div
-        className="absolute inset-0 bg-[#1a3a5c]/40 backdrop-blur-sm"
+        className="absolute inset-0 bg-[#0f172a]/40 backdrop-blur-sm"
         onClick={() => onOpenChange(false)}
       />
-
-      {/* Modal container - also closes on click */}
       <div
         className="absolute inset-0 flex items-center justify-center p-4"
         onClick={() => onOpenChange(false)}
       >
-        {/* Modal window */}
         <div
           className={clsx(
             'relative w-full max-w-2xl max-h-[85vh] overflow-y-auto',
-            // Y2K Window style
-            'bg-gradient-to-b from-[#f0f8ff] to-[#d8ecf8]',
-            'border-2 rounded-lg',
-            'border-t-white border-l-white border-b-[#88b0d0] border-r-[#88b0d0]',
-            'shadow-[4px_4px_12px_rgba(0,60,120,0.3)]',
+            'bg-white rounded-2xl border border-[var(--color-border)]',
+            'shadow-[0_24px_72px_rgba(15,23,42,0.18)]',
+            'animate-slide-up',
             className
           )}
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Title bar - Y2K style */}
           {title && (
-            <div className="relative flex items-center px-4 py-2 bg-gradient-to-r from-[#0066cc] to-[#00aaff] text-white font-bold rounded-t-md">
-              <span className="flex items-center gap-2">
-                <span className="w-3 h-3 bg-gradient-to-br from-[#66ccff] to-[#0044aa] rounded-full border border-[#004488]" />
-                {title}
-              </span>
+            <div className="flex items-center justify-between px-6 pt-5 pb-3">
+              <h2 className="text-base font-semibold text-text">{title}</h2>
               <button
                 onClick={() => onOpenChange(false)}
-                className="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center bg-gradient-to-b from-[#ff8888] to-[#cc4444] text-white text-xs font-bold rounded border border-[#aa3333] hover:from-[#ff9999] hover:to-[#dd5555] transition-colors"
+                className="w-8 h-8 flex items-center justify-center rounded-full text-text-muted hover:text-text hover:bg-[#f3f4f6] transition-colors"
                 aria-label="Close"
               >
-                ✕
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
               </button>
             </div>
           )}
-          <div className="p-6">{children}</div>
+          <div className={clsx(title ? 'px-6 pb-6' : 'p-6')}>{children}</div>
         </div>
       </div>
     </div>

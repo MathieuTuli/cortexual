@@ -5,8 +5,8 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        mono: ['SF Mono', 'Consolas', 'Monaco', 'monospace'],
-        sans: ['Trebuchet MS', 'Arial', 'system-ui', 'sans-serif'],
+        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+        mono: ['SF Mono', 'JetBrains Mono', 'Consolas', 'monospace'],
       },
       colors: {
         bg: 'var(--color-bg)',
@@ -23,13 +23,11 @@ export default {
           glow: 'var(--color-accent-glow)',
         },
       },
-      borderWidth: {
-        '3': '3px',
-      },
       boxShadow: {
-        'y2k': '2px 2px 6px rgba(0, 60, 120, 0.15)',
-        'y2k-inset': 'inset 2px 2px 4px rgba(0, 40, 80, 0.1)',
-        'y2k-button': 'inset 1px 1px 0 #ffffff, inset -1px -1px 0 #a0c8e8, 2px 2px 4px rgba(0, 60, 120, 0.2)',
+        soft: '0 1px 2px rgba(15, 23, 42, 0.06), 0 2px 6px rgba(15, 23, 42, 0.08)',
+        card: '0 2px 4px rgba(15, 23, 42, 0.10), 0 12px 32px rgba(15, 23, 42, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.7)',
+        'card-hover': '0 4px 12px rgba(15, 23, 42, 0.14), 0 24px 56px rgba(15, 23, 42, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.8)',
+        focus: '0 0 0 3px rgba(76, 111, 255, 0.18)',
       },
       animation: {
         'slide-up': 'slideUp 0.2s ease-out',
