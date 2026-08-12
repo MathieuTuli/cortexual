@@ -74,6 +74,10 @@ export function CreateCardModal() {
   const batchCounter = useRef(0)
 
   const isMediaType = cardType === 'image' || cardType === 'video'
+  const urlList = url
+    .split(/[\n\s]+/)
+    .map((u) => u.trim())
+    .filter(Boolean)
   const stagedImages = staged.filter((s) => isImage(s.file))
   const stagedVideos = staged.filter((s) => !isImage(s.file))
   const imageGroups = groupImages(stagedImages, groupMode)
@@ -184,6 +188,60 @@ export function CreateCardModal() {
     return [...imageCards, ...videoCards]
   }
 
+  /**
+   * YouTube and X carry their own embeds, so they only need the id. Everything
+   * else gets a full article extraction, which is where author and site name
+   * come from — a title alone makes for a poor card.
+   */
+  const buildLinkCard = async (one: string, single: boolean): Promise<CreateCardInput> => {
+    const parsed = parseUrl(one)
+
+    let preview: { title?: string; description?: string; image?: string; siteName?: string } | undefined
+    // Named apart from the `author` form field, which belongs to highlights.
+    let byline: string | undefined
+    let site: string | undefined
+
+    if (parsed.embedType === 'youtube' && parsed.embedId) {
+      preview = { image: getYouTubeThumbnail(parsed.embedId), siteName: 'YouTube' }
+    } else if (parsed.embedType === 'generic') {
+      // A failed extraction shouldn't stop the card being made — you still
+      // wanted the link saved.
+      const article = await api
+        .getArticle(one)
+        .catch((): Awaited<ReturnType<typeof api.getArticle>> => ({}))
+      if (article.title || article.excerpt || article.image) {
+        preview = {
+          title: article.title,
+          description: article.excerpt || article.description,
+          image: article.image,
+          siteName: article.siteName,
+        }
+      }
+      byline = article.author
+      site = article.siteName
+    }
+
+    return {
+      type: 'link',
+      spaceIds,
+      // A shared title across a batch would label every card the same.
+      title: single ? title || undefined : undefined,
+      url: one,
+      author: byline,
+      sourceUrl: one,
+      siteName: site,
+      embedType: parsed.embedType,
+      embedData: parsed.embedId
+        ? parsed.embedType === 'youtube'
+          ? { videoId: parsed.embedId }
+          : { tweetId: parsed.embedId }
+        : undefined,
+      preview,
+      tags,
+      subnotes: [],
+    }
+  }
+
   const handleSubmit = async () => {
     setIsSubmitting(true)
 
@@ -216,34 +274,17 @@ export function CreateCardModal() {
       } else if (isMediaType && staged.length > 0) {
         await createCards(await buildMediaCards(), (done, total) => setProgress({ done, total }))
       } else if (cardType === 'link') {
-        const parsed = parseUrl(url)
+        // One URL per line, so a backlog of blog posts is one paste rather
+        // than one trip through this modal each.
+        const urls = url
+          .split('\n')
+          .map((u) => u.trim())
+          .filter(Boolean)
 
-        let preview: { title?: string; description?: string; image?: string; siteName?: string } | undefined
-        if (parsed.embedType === 'youtube' && parsed.embedId) {
-          preview = { image: getYouTubeThumbnail(parsed.embedId), siteName: 'YouTube' }
-        } else if (parsed.embedType === 'generic') {
-          const fetched = await api.getLinkPreview(url)
-          if (fetched && (fetched.title || fetched.description || fetched.image)) {
-            preview = fetched
-          }
+        for (const [index, one] of urls.entries()) {
+          setProgress({ done: index, total: urls.length })
+          await createCard(await buildLinkCard(one, urls.length === 1))
         }
-
-        input = {
-          type: 'link',
-          spaceIds,
-          title: title || undefined,
-          url,
-          embedType: parsed.embedType,
-          embedData: parsed.embedId
-            ? parsed.embedType === 'youtube'
-              ? { videoId: parsed.embedId }
-              : { tweetId: parsed.embedId }
-            : undefined,
-          preview,
-          tags,
-          subnotes: [],
-        }
-        await createCard(input)
       }
 
       handleClose()
@@ -257,7 +298,7 @@ export function CreateCardModal() {
   const isValid = () => {
     if (cardType === 'note') return content.trim().length > 0
     if (isMediaType) return staged.length > 0
-    if (cardType === 'link') return url.trim().length > 0
+    if (cardType === 'link') return urlList.length > 0
     if (cardType === 'highlight') return content.trim().length > 0
     return false
   }
@@ -415,15 +456,25 @@ export function CreateCardModal() {
 
           {cardType === 'link' && (
             <>
-              <Input
-                placeholder="Paste URL (YouTube, Twitter, or any link)"
+              <Textarea
+                placeholder={'Paste a URL — or several, one per line'}
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
+                rows={urlList.length > 1 ? 5 : 2}
               />
               {url && (
                 <div className="px-3.5 py-2 rounded-lg bg-[#f9fafb] border border-[var(--color-border)]">
                   <p className="text-xs text-text-muted">
-                    Detected: <span className="font-medium text-accent-primary">{parseUrl(url).embedType}</span>
+                    {urlList.length > 1 ? (
+                      <>
+                        <span className="font-medium text-accent-primary">{urlList.length} links</span>
+                        {' — one card each, fetched in turn'}
+                      </>
+                    ) : (
+                      <>
+                        Detected: <span className="font-medium text-accent-primary">{parseUrl(urlList[0] || '').embedType}</span>
+                      </>
+                    )}
                   </p>
                 </div>
               )}

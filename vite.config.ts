@@ -152,6 +152,87 @@ async function fetchLinkPreview(url: string): Promise<LinkPreview> {
   }
 }
 
+interface Article extends LinkPreview {
+  author?: string
+  publishedAt?: string
+  excerpt?: string
+  text?: string
+  wordCount?: number
+}
+
+function pickJsonLdAuthor(html: string): string | undefined {
+  // Readability's byline is often missing on blog platforms that put the
+  // author only in structured data.
+  for (const block of html.matchAll(
+    /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi,
+  )) {
+    try {
+      const parsed = JSON.parse(block[1].trim())
+      for (const node of Array.isArray(parsed) ? parsed : [parsed, ...(parsed['@graph'] || [])]) {
+        const author = node?.author
+        if (!author) continue
+        const name = Array.isArray(author) ? author[0]?.name : author.name || author
+        if (typeof name === 'string' && name.trim()) return name.trim()
+      }
+    } catch {
+      // A malformed ld+json block is common and not worth failing over.
+    }
+  }
+  return undefined
+}
+
+function cleanByline(byline: string | null | undefined): string | undefined {
+  if (!byline) return undefined
+  const cleaned = byline.replace(/^\s*(by|written by)\s+/i, '').trim()
+  return cleaned.length > 0 && cleaned.length <= 120 ? cleaned : undefined
+}
+
+/**
+ * Full-article extraction, as opposed to fetchLinkPreview's OG-tag scrape.
+ * Substack and most blogs are ordinary enough that Readability handles them;
+ * this deliberately has no per-site special cases until one proves necessary.
+ */
+async function fetchArticle(url: string): Promise<Article> {
+  const preview = await fetchLinkPreview(url).catch(() => ({}) as LinkPreview)
+
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 15000)
+  try {
+    const res = await undiciFetch(url, {
+      signal: controller.signal,
+      headers: {
+        'User-Agent':
+          'Mozilla/5.0 (compatible; CortexualBot/1.0; +https://cortexual.local)',
+        Accept: 'text/html,application/xhtml+xml',
+      },
+      redirect: 'follow',
+    })
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    if (!(res.headers.get('content-type') || '').includes('text/html')) return preview
+
+    const html = await res.text()
+    const { JSDOM } = await import('jsdom')
+    const { Readability } = await import('@mozilla/readability')
+
+    const dom = new JSDOM(html, { url })
+    const parsed = new Readability(dom.window.document).parse()
+    const text = parsed?.textContent?.replace(/\n{3,}/g, '\n\n').trim()
+
+    return {
+      ...preview,
+      title: parsed?.title || preview.title,
+      siteName: parsed?.siteName || preview.siteName,
+      author: cleanByline(parsed?.byline) || pickJsonLdAuthor(html),
+      publishedAt: parsed?.publishedTime || pickMeta(html, ['article:published_time']),
+      excerpt: parsed?.excerpt || preview.description,
+      text,
+      wordCount: text ? text.split(/\s+/).length : 0,
+    }
+  } finally {
+    clearTimeout(timeout)
+  }
+}
+
 let mediaSequence = 0
 
 function fileStoragePlugin() {
@@ -473,6 +554,30 @@ function fileStoragePlugin() {
             res.statusCode = err?.status || 500
             res.setHeader('Content-Type', 'application/json')
             res.end(JSON.stringify({ error: err?.message || 'Failed to fetch tweet' }))
+          }
+          return
+        }
+        next()
+      })
+
+      // GET /api/article?url=... - full readability extraction
+      server.middlewares.use(async (req: any, res: any, next: any) => {
+        if (req.url?.startsWith('/api/article') && req.method === 'GET') {
+          const url = new URL(req.url, 'http://localhost').searchParams.get('url')
+          if (!url) {
+            res.statusCode = 400
+            res.end(JSON.stringify({ error: 'Missing url parameter' }))
+            return
+          }
+          try {
+            const article = await fetchArticle(url)
+            res.setHeader('Content-Type', 'application/json')
+            res.setHeader('Cache-Control', 'public, max-age=86400')
+            res.end(JSON.stringify(article))
+          } catch (err: any) {
+            res.statusCode = 502
+            res.setHeader('Content-Type', 'application/json')
+            res.end(JSON.stringify({ error: err?.message || 'Failed to extract article' }))
           }
           return
         }

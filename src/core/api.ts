@@ -144,6 +144,22 @@ export const api = {
     return res.json()
   },
 
+  async getArticle(url: string): Promise<{
+    title?: string
+    description?: string
+    image?: string
+    siteName?: string
+    author?: string
+    publishedAt?: string
+    excerpt?: string
+    text?: string
+    wordCount?: number
+  }> {
+    const res = await fetch(`${API_BASE}/article?url=${encodeURIComponent(url)}`)
+    if (!res.ok) return {}
+    return res.json()
+  },
+
   async getLinkPreview(url: string): Promise<{
     title?: string
     description?: string
