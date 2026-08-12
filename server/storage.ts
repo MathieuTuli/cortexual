@@ -9,6 +9,7 @@ export const CARDS_FILE = path.join(DATA_DIR, 'cards.json')
 export const SPACES_FILE = path.join(DATA_DIR, 'spaces.json')
 export const LAYOUTS_FILE = path.join(DATA_DIR, 'layouts.json')
 export const EMBEDDINGS_FILE = path.join(DATA_DIR, 'embeddings.json')
+export const IMAGE_EMBEDDINGS_FILE = path.join(DATA_DIR, 'image-embeddings.json')
 export const MEDIA_DIR = path.join(DATA_DIR, 'media')
 
 export function ensureStore() {
@@ -17,6 +18,7 @@ export function ensureStore() {
   if (!fs.existsSync(CARDS_FILE)) fs.writeFileSync(CARDS_FILE, '[]')
   if (!fs.existsSync(LAYOUTS_FILE)) fs.writeFileSync(LAYOUTS_FILE, '{}')
   if (!fs.existsSync(EMBEDDINGS_FILE)) fs.writeFileSync(EMBEDDINGS_FILE, '{}')
+  if (!fs.existsSync(IMAGE_EMBEDDINGS_FILE)) fs.writeFileSync(IMAGE_EMBEDDINGS_FILE, '{}')
   if (!fs.existsSync(SPACES_FILE)) {
     const now = new Date().toISOString()
     fs.writeFileSync(

@@ -15,6 +15,7 @@ import {
 } from './storage.ts'
 import { fetchArticle, fetchLinkPreview, fetchTweet, normalizeTweet } from './content.ts'
 import { findRelated } from './related.ts'
+import { searchCards } from './search.ts'
 
 ensureStore()
 
@@ -292,6 +293,16 @@ api.post('/related', async (c) => {
   if (!text) return c.json({ error: 'Missing text' }, 400)
   try {
     return c.json({ related: await findRelated(text, limit ?? 4) })
+  } catch (error) {
+    return c.json({ error: (error as Error).message }, 500)
+  }
+})
+
+api.post('/search', async (c) => {
+  const { query, limit } = await c.req.json<{ query: string; limit?: number }>()
+  if (!query) return c.json({ hits: [] })
+  try {
+    return c.json({ hits: await searchCards(query, limit ?? 60) })
   } catch (error) {
     return c.json({ error: (error as Error).message }, 500)
   }

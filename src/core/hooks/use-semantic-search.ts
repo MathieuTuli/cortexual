@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { useCardsStore, useSearchStore } from '../stores'
+import { api } from '../api'
 
 /** Wait this long after the last keystroke before embedding the query. */
 const QUERY_DEBOUNCE_MS = 220
@@ -16,7 +17,6 @@ export function useSemanticSearch() {
   const status = useSearchStore((s) => s.status)
   const loadIndex = useSearchStore((s) => s.loadIndex)
   const syncIndex = useSearchStore((s) => s.syncIndex)
-  const searchIds = useSearchStore((s) => s.searchIds)
 
   useEffect(() => {
     void loadIndex()
@@ -40,9 +40,9 @@ export function useSemanticSearch() {
 
     let cancelled = false
     const timer = setTimeout(() => {
-      searchIds(query).then(
-        (scored) => {
-          if (!cancelled) setSemanticIds(scored.map((s) => s.item))
+      api.search(query).then(
+        (hits) => {
+          if (!cancelled) setSemanticIds(hits.map((h) => h.id))
         },
         () => {
           // A failed query just means no semantic hits; the substring match
@@ -56,5 +56,5 @@ export function useSemanticSearch() {
       cancelled = true
       clearTimeout(timer)
     }
-  }, [searchQuery, searchIds, setSemanticIds])
+  }, [searchQuery, setSemanticIds])
 }

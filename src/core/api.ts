@@ -45,6 +45,16 @@ export const api = {
     return res.json()
   },
 
+  async search(query: string, limit = 60): Promise<{ id: string; via: 'text' | 'image' | 'both' }[]> {
+    const res = await fetch(`${API_BASE}/search`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query, limit }),
+    })
+    if (!res.ok) return []
+    return (await res.json()).hits || []
+  },
+
   // Embeddings
   async getEmbeddings(): Promise<Record<string, { hash: string; vector: string }>> {
     const res = await fetch(`${API_BASE}/embeddings`)
