@@ -224,16 +224,21 @@ Do this when whole-file JSON actually hurts: noticeable save latency, a corrupte
 
 ## Suggested order
 
-| # | Group | Effort | Why here |
-|---|---|---|---|
-| 1 | 0 — safety net | 2d | Everything after is safer; two live regressions fixed |
-| 2 | A — schema | 4d | Blocks canvas + importers; cheapest structural win |
-| 3 | C — intelligence | 6d | Highest daily-use payoff, zero infrastructure |
-| 4 | B — canvas | 5.5d | The marquee feature, now unblocked by A1 |
-| 5 | D — daemon | 3.5d | Only if you want the extension |
-| 6 | E — extension | 11d | Capture friction is what kills tools like this |
-| 7 | F — importers | 7d | Do when you actually have a corpus to pull in |
-| — | X1 — SQLite | 3d | When JSON hurts |
+| # | Group | Effort | Status | Why here |
+|---|---|---|---|---|
+| 1 | 0 — safety net | 2d | **done** `206c9cc` | Everything after is safer; two live regressions fixed |
+| 2 | A — schema | 4d | **done** `af7fce0` `4cce9cd` `58d3e1c` | Blocks canvas + importers; cheapest structural win |
+| 3 | C — intelligence | 6d | ← next | Highest daily-use payoff, zero infrastructure |
+| 4 | B — canvas | 5.5d | | The marquee feature, now unblocked by A1 |
+| 5 | D — daemon | 3.5d | | Only if you want the extension |
+| 6 | E — extension | 11d | | Capture friction is what kills tools like this |
+| 7 | F — importers | 7d | | Do when you actually have a corpus to pull in |
+| — | X1 — SQLite | 3d | | When JSON hurts |
+
+**Deviations from spec.** A2 dropped the planned `excerpt` field from the card
+base — the quote body belongs to the highlight card as `text`, not to every card.
+A1 changed space deletion from "delete its cards" to "unfile them": with
+many-to-many, a card in three spaces shouldn't die because one is removed.
 
 **~39 days**, versus 55 with the phone. Groups 0, A, C, D can each start immediately;
 only B, E, and F have real predecessors.
