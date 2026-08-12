@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { importFromDirectory, downloadExport, clearDatabase } from '@/core/utils'
+import { importArchive } from '@/core/import'
 import { useCardsStore } from '@/core/stores'
 import { ContextMenu, useContextMenu } from './ui'
 import { clsx } from 'clsx'
@@ -7,6 +8,7 @@ import { clsx } from 'clsx'
 const ICON = {
   import: <path d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14" />,
   export: <path d="M12 15V3m0 0 4 4m-4-4L8 7M5 21h14" />,
+  archive: <path d="M3 7h18M5 7v13h14V7M9 11h6M8 4h8l1 3H7z" />,
   more: <path d="M12 5h.01M12 12h.01M12 19h.01" />,
 }
 
@@ -51,11 +53,12 @@ export function ImportExport() {
   const [isImporting, setIsImporting] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
   const [isClearing, setIsClearing] = useState(false)
+  const [isImportingArchive, setIsImportingArchive] = useState(false)
   const [status, setStatus] = useState<string | null>(null)
   const loadCards = useCardsStore((s) => s.loadCards)
   const { contextMenu, showContextMenu, hideContextMenu } = useContextMenu()
 
-  const busy = isImporting || isExporting || isClearing
+  const busy = isImporting || isExporting || isClearing || isImportingArchive
 
   const handleImportDirectory = async () => {
     if (!('showDirectoryPicker' in window)) {
@@ -87,6 +90,39 @@ export function ImportExport() {
       )
     } finally {
       setIsImporting(false)
+    }
+  }
+
+  const handleImportArchive = async () => {
+    if (!('showDirectoryPicker' in window)) {
+      setStatus('Directory picker needs Chrome or Edge.')
+      return
+    }
+
+    try {
+      const directoryHandle = await window.showDirectoryPicker()
+
+      setIsImportingArchive(true)
+      const result = await importArchive(directoryHandle, [], setStatus)
+
+      if (!result.kind) {
+        setStatus('No X or Instagram export found in that folder.')
+        return
+      }
+
+      setStatus(
+        `${result.kind === 'x' ? 'X' : 'Instagram'}: imported ${result.imported}` +
+          (result.skipped ? `, ${result.skipped} already here` : '')
+      )
+      await loadCards()
+    } catch (error) {
+      setStatus(
+        (error as Error).name === 'AbortError'
+          ? 'Import cancelled'
+          : `Error: ${(error as Error).message}`
+      )
+    } finally {
+      setIsImportingArchive(false)
     }
   }
 
@@ -130,6 +166,13 @@ export function ImportExport() {
           onClick={handleImportDirectory}
           disabled={busy}
           busy={isImporting}
+        />
+        <Action
+          icon="archive"
+          label={isImportingArchive ? 'Reading' : 'Archive'}
+          onClick={handleImportArchive}
+          disabled={busy}
+          busy={isImportingArchive}
         />
         <Action
           icon="export"
