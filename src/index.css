@@ -147,3 +147,29 @@ body::before {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+
+/* Canvas print: drop the chrome and let the surface fill the sheet. Landscape
+   and background graphics are the user's call in the print dialog — the
+   browser won't let a page force either. */
+@media print {
+  @page {
+    size: landscape;
+    margin: 0;
+  }
+
+  .canvas-chrome {
+    display: none !important;
+  }
+
+  /* The canvas is fixed-position for the viewport; printing needs it in flow
+     or only the first sheet renders. */
+  .canvas-surface {
+    position: static !important;
+    overflow: visible !important;
+    height: 100vh !important;
+  }
+
+  body {
+    background: #fff !important;
+  }
+}

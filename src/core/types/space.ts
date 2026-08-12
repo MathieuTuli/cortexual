@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import type { Card } from './card'
 
-export const ViewModeEnum = z.enum(['grid', 'list', 'canvas'])
+export const ViewModeEnum = z.enum(['grid', 'list'])
 export type ViewMode = z.infer<typeof ViewModeEnum>
 
 export const SpaceSchema = z.object({

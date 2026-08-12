@@ -16,11 +16,6 @@ const VIEW_MODES: { mode: ViewMode; label: string; icon: JSX.Element }[] = [
     label: 'List view',
     icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M3 6h.01"/><path d="M3 12h.01"/><path d="M3 18h.01"/></svg>,
   },
-  {
-    mode: 'canvas',
-    label: 'Canvas',
-    icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="8" height="6" rx="1"/><rect x="14" y="7" width="7" height="10" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/></svg>,
-  },
 ]
 
 export function TopBar() {
@@ -37,6 +32,12 @@ export function TopBar() {
   const indexProgress = useSearchStore((s) => s.progress)
 
   const activeSpace = activeSpaceId ? getSpaceById(activeSpaceId) : null
+
+  // A real new tab, not a route change — it is a separate printable document.
+  const openCanvas = () => {
+    const query = activeSpaceId ? `?space=${encodeURIComponent(activeSpaceId)}` : ''
+    window.open(`/canvas${query}`, '_blank', 'noopener')
+  }
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -98,6 +99,15 @@ export function TopBar() {
             </button>
           ))}
         </div>
+
+        <button
+          onClick={openCanvas}
+          title="Open this space as a canvas in a new tab"
+          className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-full bg-white/70 backdrop-blur-md border border-white/60 text-sm text-text-muted hover:text-text hover:bg-white transition-colors flex-shrink-0"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="8" height="6" rx="1"/><rect x="14" y="7" width="7" height="10" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/></svg>
+          Canvas
+        </button>
 
         <button
           onClick={() => openCreateModal()}
