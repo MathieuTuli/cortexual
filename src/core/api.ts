@@ -55,6 +55,12 @@ export const api = {
     return (await res.json()).hits || []
   },
 
+  /** Ask the server to embed anything new or edited. */
+  async reindex(): Promise<{ total: number; embedded: number; removed: number }> {
+    const res = await fetch(`${API_BASE}/index`, { method: 'POST' })
+    return res.ok ? res.json() : { total: 0, embedded: 0, removed: 0 }
+  },
+
   // Embeddings
   async getEmbeddings(): Promise<Record<string, { hash: string; vector: string }>> {
     const res = await fetch(`${API_BASE}/embeddings`)

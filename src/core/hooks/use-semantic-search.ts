@@ -22,14 +22,14 @@ export function useSemanticSearch() {
     void loadIndex()
   }, [loadIndex])
 
-  // Re-index whenever the library changes. syncIndex diffs by content hash, so
-  // an unchanged library costs one pass over the cards and no model work.
+  // Re-index whenever the library changes. The server diffs by content hash,
+  // so an unchanged library costs one pass over the cards and no model work.
   useEffect(() => {
     if (status === 'idle' || status === 'loading' || cards.length === 0) return
-    void syncIndex(cards)
+    void syncIndex()
     // Deliberately not keyed on `status`: syncIndex sets it, which would loop.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cards, syncIndex])
+  }, [cards.length, syncIndex])
 
   useEffect(() => {
     const query = searchQuery.trim()

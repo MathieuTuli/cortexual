@@ -16,6 +16,7 @@ import {
 import { fetchArticle, fetchLinkPreview, fetchTweet, normalizeTweet } from './content.ts'
 import { findRelated } from './related.ts'
 import { searchCards } from './search.ts'
+import { syncTextIndex } from './index-text.ts'
 import { extractPostMedia } from './post-media.ts'
 
 ensureStore()
@@ -344,6 +345,14 @@ api.get('/post-media', async (c) => {
     return c.json(found ?? { source: 'page', media: [] })
   } catch (error) {
     return c.json({ error: (error as Error).message }, 502)
+  }
+})
+
+api.post('/index', async (c) => {
+  try {
+    return c.json(await syncTextIndex())
+  } catch (error) {
+    return c.json({ error: (error as Error).message }, 500)
   }
 })
 
