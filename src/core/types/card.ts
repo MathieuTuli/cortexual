@@ -17,6 +17,12 @@ export const CardBaseSchema = z.object({
   spaceIds: z.array(z.string()),
   type: CardTypeEnum,
   title: z.string().optional(),
+  // Where the card came from, when it was captured from something else — a
+  // highlight, a clipped article, an imported bookmark. Empty for cards you
+  // wrote yourself.
+  author: z.string().optional(),
+  sourceUrl: z.string().optional(),
+  siteName: z.string().optional(),
   tags: z.array(z.string()),
   subnotes: z.array(SubnoteSchema),
   createdAt: z.string(),

@@ -181,6 +181,11 @@ export async function importFromDirectory(
     }
 
     const tags = parseTags(csvCard.tags)
+    const provenance = {
+      author: csvCard.author || undefined,
+      sourceUrl: csvCard.sourceUrl || undefined,
+      siteName: csvCard.siteName || undefined,
+    }
     const cardNow = csvCard.created || new Date().toISOString()
 
     const spaceIds = parseSpaceNames(csvCard.space)
@@ -194,6 +199,7 @@ export async function importFromDirectory(
         id: csvCard.id,
         type: 'image',
         spaceIds,
+        ...provenance,
         title: csvCard.title || undefined,
         mediaIds: [],
         caption: csvCard.note || undefined,
@@ -236,6 +242,7 @@ export async function importFromDirectory(
         id: csvCard.id,
         type: 'video',
         spaceIds,
+        ...provenance,
         title: csvCard.title || undefined,
         mediaId: '',
         caption: csvCard.note || undefined,
@@ -294,6 +301,7 @@ export async function importFromDirectory(
         id: csvCard.id,
         type: 'link',
         spaceIds,
+        ...provenance,
         title: csvCard.title || undefined,
         url: csvCard.url,
         embedType: parsed.embedType,
@@ -310,6 +318,7 @@ export async function importFromDirectory(
         id: csvCard.id,
         type: 'note',
         spaceIds,
+        ...provenance,
         title: csvCard.title || undefined,
         content: csvCard.content || csvCard.note || '',
         tags,
@@ -391,6 +400,9 @@ export async function exportToFolder(): Promise<{ csv: Blob; mediaFiles: { name:
       url: card.type === 'link' ? (card as LinkCard).url : '',
       content: card.type === 'note' ? (card as NoteCard).content : '',
       note: (card.type === 'image' || card.type === 'video') ? ((card as ImageCard | VideoCard).caption || '') : '',
+      author: card.author || '',
+      sourceUrl: card.sourceUrl || '',
+      siteName: card.siteName || '',
       tags: stringifyTags(card.tags),
       created: card.createdAt,
       space: card.spaceIds

@@ -1,25 +1,50 @@
 import { describe, it, expect } from 'vitest'
 import { parseCsv, generateCsv, parseTags, stringifyTags, type CsvCard } from './csv'
 
-const HEADER = 'id,type,title,url,content,note,tags,created,space,media'
+const HEADER = 'id,type,title,url,content,note,author,sourceurl,sitename,tags,created,space,media'
 
 function blank(overrides: Partial<CsvCard> = {}): CsvCard {
   return {
-    id: '', type: '', title: '', url: '', content: '',
-    note: '', tags: '', created: '', space: '', media: '',
+    id: '', type: '', title: '', url: '', content: '', note: '',
+    author: '', sourceUrl: '', siteName: '',
+    tags: '', created: '', space: '', media: '',
     ...overrides,
   }
 }
 
+/**
+ * A raw row in HEADER order. Built field-by-field rather than as a literal so
+ * adding a column can't silently shift every fixture's values one slot left.
+ */
+function row(fields: Partial<CsvCard>): string {
+  const c = blank(fields)
+  return [
+    c.id, c.type, c.title, c.url, c.content, c.note,
+    c.author, c.sourceUrl, c.siteName,
+    c.tags, c.created, c.space, c.media,
+  ].join(',')
+}
+
 describe('parseCsv', () => {
-  it('parses a plain row', () => {
-    const rows = parseCsv(`${HEADER}\na1,Note,Hello,,body,,x,2026-01-01,Inbox,`)
+  it('parses every column of a plain row', () => {
+    const fields = {
+      id: 'a1', type: 'Note', title: 'Hello', url: 'https://e.com',
+      content: 'body', note: 'n', author: 'Ada', sourceUrl: 'https://src',
+      siteName: 'Src', tags: 'x', created: '2026-01-01', space: 'Inbox',
+      media: 'a.jpg',
+    }
+    const rows = parseCsv(`${HEADER}\n${row(fields)}`)
     expect(rows).toHaveLength(1)
-    expect(rows[0]).toMatchObject({ id: 'a1', type: 'Note', title: 'Hello', content: 'body' })
+    expect(rows[0]).toEqual(blank(fields))
+  })
+
+  it('reads the provenance columns', () => {
+    const rows = parseCsv(`${HEADER}\n${row({ id: 'a1', author: 'Ada', sourceUrl: 'https://s', siteName: 'S' })}`)
+    expect(rows[0]).toMatchObject({ author: 'Ada', sourceUrl: 'https://s', siteName: 'S' })
   })
 
   it('drops rows with no id', () => {
-    const rows = parseCsv(`${HEADER}\n,Note,No id,,,,,,,\na2,Note,Has id,,,,,,,`)
+    const rows = parseCsv(`${HEADER}\n${row({ type: 'Note', title: 'No id' })}\n${row({ id: 'a2' })}`)
     expect(rows.map((r) => r.id)).toEqual(['a2'])
   })
 

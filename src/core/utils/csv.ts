@@ -7,6 +7,9 @@ export interface CsvCard {
   url: string
   content: string
   note: string
+  author: string
+  sourceUrl: string
+  siteName: string
   tags: string
   created: string
   space: string
@@ -39,6 +42,9 @@ export function parseCsv(csvText: string): CsvCard[] {
       url: getColumnValue(values, 'url'),
       content: getColumnValue(values, 'content'),
       note: getColumnValue(values, 'note'),
+      author: getColumnValue(values, 'author'),
+      sourceUrl: getColumnValue(values, 'sourceurl'),
+      siteName: getColumnValue(values, 'sitename'),
       tags: getColumnValue(values, 'tags'),
       created: getColumnValue(values, 'created'),
       space: getColumnValue(values, 'space'),
@@ -104,7 +110,7 @@ function parseCsvRows(csvText: string): string[][] {
 }
 
 export function generateCsv(cards: CsvCard[]): string {
-  const header = 'id,type,title,url,content,note,tags,created,space,media'
+  const header = 'id,type,title,url,content,note,author,sourceurl,sitename,tags,created,space,media'
   const lines = [header]
 
   for (const card of cards) {
@@ -115,6 +121,9 @@ export function generateCsv(cards: CsvCard[]): string {
       escapeCsvValue(card.url),
       escapeCsvValue(card.content),
       escapeCsvValue(card.note),
+      escapeCsvValue(card.author),
+      escapeCsvValue(card.sourceUrl),
+      escapeCsvValue(card.siteName),
       escapeCsvValue(card.tags),
       escapeCsvValue(card.created),
       escapeCsvValue(card.space),

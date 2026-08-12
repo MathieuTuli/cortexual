@@ -56,6 +56,8 @@ export function EditCardModal() {
   const [caption, setCaption] = useState('')
   const [tags, setTags] = useState<string[]>([])
   const [spaceIds, setSpaceIds] = useState<string[]>([])
+  const [author, setAuthor] = useState('')
+  const [sourceUrl, setSourceUrl] = useState('')
   const [subnotes, setSubnotes] = useState<Subnote[]>([])
   const [newSubnote, setNewSubnote] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -72,6 +74,8 @@ export function EditCardModal() {
       setCaption('caption' in card ? (card.caption as string) || '' : '')
       setTags([...card.tags])
       setSpaceIds([...card.spaceIds])
+      setAuthor(card.author || '')
+      setSourceUrl(card.sourceUrl || '')
       setSubnotes([...card.subnotes])
       setNewImageFiles([])
       setNewImagePreviews([])
@@ -143,6 +147,12 @@ export function EditCardModal() {
         tags,
         spaceIds,
         subnotes,
+        // Sent as '' rather than undefined when cleared: the store merges
+        // changes over the existing card, and JSON.stringify drops undefined
+        // keys, so an omitted field reads as "leave it alone" — you could
+        // never empty one.
+        author: author.trim(),
+        sourceUrl: sourceUrl.trim(),
       }
       if (card.type === 'note') {
         (updates as Partial<Card> & { content: string }).content = content
@@ -266,6 +276,19 @@ export function EditCardModal() {
             onChange={(e) => setCaption(e.target.value)}
           />
         )}
+
+        <div className="grid grid-cols-2 gap-2">
+          <Input
+            placeholder="Author (optional)"
+            value={author}
+            onChange={(e) => setAuthor(e.target.value)}
+          />
+          <Input
+            placeholder="Source URL (optional)"
+            value={sourceUrl}
+            onChange={(e) => setSourceUrl(e.target.value)}
+          />
+        </div>
 
         <TagInput
           tags={tags}

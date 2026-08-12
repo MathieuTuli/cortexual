@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useAppStore, useCardsStore, useSpacesStore } from '@/core/stores'
 import { cardSpaces } from '@/core/types'
+import { getHostname } from '@/core/utils'
 import { api } from '@/core/api'
 import { Modal, Button, TagInput } from '../ui'
 import { YouTubeEmbed } from '../embeds/YouTubeEmbed'
@@ -240,6 +241,25 @@ export function CardViewModal() {
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {(card.author || card.sourceUrl || card.siteName) && (
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-text-muted pt-3">
+            {card.author && <span className="text-text">{card.author}</span>}
+            {card.author && (card.siteName || card.sourceUrl) && <span>·</span>}
+            {card.sourceUrl ? (
+              <a
+                href={card.sourceUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-text underline underline-offset-2 truncate max-w-[280px]"
+              >
+                {card.siteName || getHostname(card.sourceUrl)}
+              </a>
+            ) : (
+              card.siteName && <span>{card.siteName}</span>
+            )}
           </div>
         )}
 
