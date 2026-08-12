@@ -16,6 +16,11 @@ const VIEW_MODES: { mode: ViewMode; label: string; icon: JSX.Element }[] = [
     label: 'List view',
     icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M3 6h.01"/><path d="M3 12h.01"/><path d="M3 18h.01"/></svg>,
   },
+  {
+    mode: 'canvas',
+    label: 'Canvas',
+    icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="8" height="6" rx="1"/><rect x="14" y="7" width="7" height="10" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/></svg>,
+  },
 ]
 
 export function TopBar() {
