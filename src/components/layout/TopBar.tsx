@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { useAppStore, useCardsStore, useSpacesStore } from '@/core/stores'
+import { useAppStore, useCardsStore, useSpacesStore, useSearchStore } from '@/core/stores'
 import { useViewMode } from '@/core/hooks'
 import type { ViewMode } from '@/core/types'
 import { Tag } from '../ui'
@@ -34,6 +34,7 @@ export function TopBar() {
   const getSpaceById = useSpacesStore((s) => s.getSpaceById)
 
   const [viewMode, setViewMode] = useViewMode()
+  const indexProgress = useSearchStore((s) => s.progress)
 
   const activeSpace = activeSpaceId ? getSpaceById(activeSpaceId) : null
 
@@ -64,9 +65,18 @@ export function TopBar() {
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full bg-white/70 backdrop-blur-md border border-white/60 text-text rounded-full pl-11 pr-20 py-2.5 text-sm placeholder:text-text-muted focus:outline-none focus:bg-white focus:border-accent-primary focus:ring-2 focus:ring-accent-primary/20 transition-colors"
           />
-          <kbd className="absolute right-3 top-1/2 -translate-y-1/2 px-1.5 py-0.5 text-[10px] font-medium text-text-muted bg-white/90 rounded border border-[var(--color-border)]">
-            ⌘ K
-          </kbd>
+          {indexProgress ? (
+            <span
+              className="absolute right-3 top-1/2 -translate-y-1/2 px-2 py-0.5 text-[10px] tabular-nums text-text-muted bg-white/90 rounded border border-[var(--color-border)]"
+              title="Building the search index"
+            >
+              indexing {Math.round((indexProgress.done / indexProgress.total) * 100)}%
+            </span>
+          ) : (
+            <kbd className="absolute right-3 top-1/2 -translate-y-1/2 px-1.5 py-0.5 text-[10px] font-medium text-text-muted bg-white/90 rounded border border-[var(--color-border)]">
+              ⌘ K
+            </kbd>
+          )}
         </div>
 
         <div className="inline-flex p-1 rounded-full bg-white/70 backdrop-blur-md border border-white/60 flex-shrink-0">

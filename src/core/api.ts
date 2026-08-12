@@ -45,6 +45,24 @@ export const api = {
     return res.json()
   },
 
+  // Embeddings
+  async getEmbeddings(): Promise<Record<string, { hash: string; vector: string }>> {
+    const res = await fetch(`${API_BASE}/embeddings`)
+    return res.json()
+  },
+
+  async saveEmbeddings(
+    entries: Record<string, { hash: string; vector: string }>,
+    removed: string[] = []
+  ) {
+    const res = await fetch(`${API_BASE}/embeddings`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ entries, removed }),
+    })
+    return res.json()
+  },
+
   // Canvas layouts
   async getLayouts() {
     const res = await fetch(`${API_BASE}/layouts`)

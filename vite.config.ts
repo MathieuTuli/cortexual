@@ -18,6 +18,7 @@ const DATA_DIR = path.resolve(__dirname, 'data')
 const CARDS_FILE = path.join(DATA_DIR, 'cards.json')
 const SPACES_FILE = path.join(DATA_DIR, 'spaces.json')
 const LAYOUTS_FILE = path.join(DATA_DIR, 'layouts.json')
+const EMBEDDINGS_FILE = path.join(DATA_DIR, 'embeddings.json')
 const MEDIA_DIR = path.join(DATA_DIR, 'media')
 
 // Ensure data directories exist
@@ -27,6 +28,7 @@ if (!fs.existsSync(MEDIA_DIR)) fs.mkdirSync(MEDIA_DIR, { recursive: true })
 // Initialize files if they don't exist
 if (!fs.existsSync(CARDS_FILE)) fs.writeFileSync(CARDS_FILE, '[]')
 if (!fs.existsSync(LAYOUTS_FILE)) fs.writeFileSync(LAYOUTS_FILE, '{}')
+if (!fs.existsSync(EMBEDDINGS_FILE)) fs.writeFileSync(EMBEDDINGS_FILE, '{}')
 if (!fs.existsSync(SPACES_FILE)) {
   fs.writeFileSync(SPACES_FILE, JSON.stringify([
     { id: 'default', name: 'General', icon: '📚', color: '#0066cc', sortOrder: 0, isDefault: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), deletedAt: null }
@@ -253,6 +255,30 @@ function fileStoragePlugin() {
           }
           res.setHeader('Content-Type', 'application/json')
           res.end(JSON.stringify({ success: true }))
+          return
+        }
+        next()
+      })
+
+      // GET /api/embeddings - cardId -> { hash, vector }
+      server.middlewares.use((req: any, res: any, next: any) => {
+        if (req.url === '/api/embeddings' && req.method === 'GET') {
+          res.setHeader('Content-Type', 'application/json')
+          res.end(fs.readFileSync(EMBEDDINGS_FILE, 'utf-8'))
+          return
+        }
+        next()
+      })
+
+      // PUT /api/embeddings - merge a batch in, drop ids listed in `removed`
+      server.middlewares.use((req: any, res: any, next: any) => {
+        if (req.url === '/api/embeddings' && req.method === 'PUT') {
+          const stored = JSON.parse(fs.readFileSync(EMBEDDINGS_FILE, 'utf-8'))
+          Object.assign(stored, req.body?.entries || {})
+          for (const cardId of req.body?.removed || []) delete stored[cardId]
+          fs.writeFileSync(EMBEDDINGS_FILE, JSON.stringify(stored))
+          res.setHeader('Content-Type', 'application/json')
+          res.end(JSON.stringify({ count: Object.keys(stored).length }))
           return
         }
         next()

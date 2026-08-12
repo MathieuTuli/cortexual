@@ -6,6 +6,7 @@ import { api } from '@/core/api'
 import { Modal, Button, TagInput } from '../ui'
 import { YouTubeEmbed } from '../embeds/YouTubeEmbed'
 import { TwitterEmbed } from '../embeds/TwitterEmbed'
+import { RelatedCards } from '../cards/RelatedCards'
 
 export function CardViewModal() {
   const isOpen = useAppStore((s) => s.isViewModalOpen)
@@ -275,6 +276,8 @@ export function CardViewModal() {
             )}
           </div>
         )}
+
+        <RelatedCards cardId={card.id} />
 
         <div className="flex items-center justify-between text-xs text-text-muted pt-4 border-t border-[var(--color-border)]">
           <div className="flex items-center gap-3">

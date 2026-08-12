@@ -3,12 +3,15 @@ import { AppShell } from '@/components/layout/AppShell'
 import { useSpacesStore } from '@/core/stores/spaces-store'
 import { useCardsStore } from '@/core/stores/cards-store'
 import { useLayoutStore } from '@/core/stores/layout-store'
+import { useSemanticSearch } from '@/core/hooks'
 
 function App() {
   const initializeSpaces = useSpacesStore((s) => s.initialize)
   const loadCards = useCardsStore((s) => s.loadCards)
   const loadLayouts = useLayoutStore((s) => s.loadLayouts)
   const flushLayouts = useLayoutStore((s) => s.flush)
+
+  useSemanticSearch()
 
   useEffect(() => {
     initializeSpaces()

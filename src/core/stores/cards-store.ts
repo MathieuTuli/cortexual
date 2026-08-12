@@ -15,6 +15,8 @@ interface CardsState {
   error: string | null
   searchQuery: string
   filterTags: string[]
+  /** Card ids from the semantic index, best first. Empty until it answers. */
+  semanticIds: string[]
 
   loadCards: () => Promise<void>
   createCard: (input: CreateCardInput, mediaBlobs?: Blob | Blob[]) => Promise<Card>
@@ -25,6 +27,7 @@ interface CardsState {
   addCardsToSpace: (cardIds: string[], spaceId: string) => Promise<void>
   removeCardsFromSpace: (cardIds: string[], spaceId: string) => Promise<void>
   setSearchQuery: (query: string) => void
+  setSemanticIds: (ids: string[]) => void
   setFilterTags: (tags: string[]) => void
   addFilterTag: (tag: string) => void
   removeFilterTag: (tag: string) => void
@@ -39,6 +42,7 @@ export const useCardsStore = create<CardsState>((set, get) => ({
   error: null,
   searchQuery: '',
   filterTags: [],
+  semanticIds: [],
 
   loadCards: async () => {
     set({ isLoading: true })
@@ -192,7 +196,12 @@ export const useCardsStore = create<CardsState>((set, get) => ({
   },
 
   setSearchQuery: (query) => {
-    set({ searchQuery: query })
+    // Drop stale semantic hits immediately; the new ones arrive async.
+    set({ searchQuery: query, semanticIds: [] })
+  },
+
+  setSemanticIds: (ids) => {
+    set({ semanticIds: ids })
   },
 
   setFilterTags: (tags) => {
@@ -214,7 +223,7 @@ export const useCardsStore = create<CardsState>((set, get) => ({
   },
 
   clearFilters: () => {
-    set({ searchQuery: '', filterTags: [] })
+    set({ searchQuery: '', filterTags: [], semanticIds: [] })
   },
 
   getCardsBySpace: (spaceId) => {
@@ -226,12 +235,26 @@ export const useCardsStore = create<CardsState>((set, get) => ({
 
     if (searchQuery) {
       const query = searchQuery.toLowerCase()
-      filtered = filtered.filter((c) => {
+      const literal = (c: Card) => {
         const title = c.title?.toLowerCase() || ''
         const tags = c.tags.join(' ').toLowerCase()
         const content = 'content' in c ? (c.content as string).toLowerCase() : ''
         return title.includes(query) || tags.includes(query) || content.includes(query)
-      })
+      }
+
+      // Literal matches lead, in their existing order — if you typed a word
+      // that's actually on a card, that card should be first. Semantic hits
+      // follow, ranked by score, so the substring path never gets worse.
+      const { semanticIds } = get()
+      const exact = filtered.filter(literal)
+      const seen = new Set(exact.map((c) => c.id))
+      const rank = new Map(semanticIds.map((id, i) => [id, i]))
+
+      const nearby = filtered
+        .filter((c) => !seen.has(c.id) && rank.has(c.id))
+        .sort((a, b) => rank.get(a.id)! - rank.get(b.id)!)
+
+      filtered = [...exact, ...nearby]
     }
 
     if (filterTags.length > 0) {
