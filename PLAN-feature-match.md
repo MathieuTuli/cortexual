@@ -79,8 +79,10 @@ GROUP E — extension (needs D1) ◄────┴─────────�
        ├─> E4 right-click image save
        └─> E5 related-on-save         (needs C3)
 
-GROUP F — importers (needs A2)
-  F1 Kindle · F2 X bookmarks · F3 Instagram · F4 Readwise
+GROUP F — ingest (needs A2)
+  bulk archives:  F1 X archive · F2 Instagram archive
+  per-article:    F3 article extractor ──> F4 batch URL ingest
+                                    └──> also backs E2 page-save
 
 OPTIONAL — SQLite (do when JSON hurts)
   X1 migrate cards.json/spaces.json → SQLite
@@ -202,17 +204,39 @@ Google Docs are a separate extraction problem — treat as stretch, not scope.
 **E5. Related-on-save** — 2 days · needs C3
 After a save, popup shows related cards from your library. Same-library only.
 
-### Group F — importers · 7 days · needs A2
+### Group F — ingest · 8 days · needs A2
 
-All parse into the existing bulk path (`api.createCardsBulk`).
+Scoped to X, Instagram, Substack, and general HTML/blogs. Kindle and Readwise
+are dropped — Readwise also wanted a paid subscription to be worth anything.
 
-**F1. Kindle** — 1 day. Drop `My Clippings.txt`, parse delimiter-separated blocks →
-highlight cards. No auth, no API, plain file.
-**F2. X bookmarks** — 2 days. X data-export ZIP → link cards (`embedType: 'twitter'`
-already handled by `url-parser.ts`).
-**F3. Instagram saves** — 2 days. Instagram export ZIP → link or image cards.
-**F4. Readwise** — 2 days. `GET /api/v2/export/` with a user token, paged by
-`updatedAfter`. Requires a Readwise subscription — skip unless you already have one.
+These are **two different mechanisms**, not one. X and Instagram are bulk
+archive imports you run once; Substack and blogs are per-article fetches you run
+continuously. Splitting them accordingly:
+
+*F-bulk — one-shot archive imports (file drop, no network, no auth)*
+
+**F1. X archive** — 2 days. The `data/` folder of an X export is JS-wrapped JSON
+(`window.YTD.tweets.part0 = [...]`). Parse bookmarks and/or likes → link cards;
+`url-parser.ts` already tags `embedType: 'twitter'` and extracts the status id.
+**F2. Instagram archive** — 2 days. Instagram's export ZIP ships
+`saved_posts.json` plus a `media/` tree. Saved posts → link cards; anything with
+a local media file → image cards through the existing media upload path.
+
+*F-fetch — per-article capture (needs network, shares one extractor)*
+
+**F3. Article extractor** — 3 days. The shared core: fetch a URL server-side,
+run readability-style extraction for title, author, publish date, lead image,
+and full text, and build a card with A2 provenance filled in. Extends the
+existing `/api/link-preview`, which only reads OG tags today. Substack is a
+well-behaved case of this, not a special one — its article markup is regular
+enough that a generic extractor handles it; a Substack-specific path is only
+warranted if the generic one measurably fails.
+**F4. Batch URL ingest** — 1 day. Paste a list of URLs, run each through F3,
+report per-URL success. This is what makes F3 useful for a blog backlog rather
+than one link at a time.
+
+F3 is also what the extension's page-save (E2) should call, so building it here
+means E2 is mostly wiring rather than a second extractor.
 
 ### Optional — X1. SQLite · 3 days
 
@@ -232,7 +256,7 @@ Do this when whole-file JSON actually hurts: noticeable save latency, a corrupte
 | 4 | B — canvas | 5.5d | | The marquee feature, now unblocked by A1 |
 | 5 | D — daemon | 3.5d | | Only if you want the extension |
 | 6 | E — extension | 11d | | Capture friction is what kills tools like this |
-| 7 | F — importers | 7d | | Do when you actually have a corpus to pull in |
+| 7 | F — ingest | 8d | | X + Instagram archives, article extractor, batch URLs |
 | — | X1 — SQLite | 3d | | When JSON hurts |
 
 **Deviations from spec.** A2 dropped the planned `excerpt` field from the card
@@ -240,7 +264,7 @@ base — the quote body belongs to the highlight card as `text`, not to every ca
 A1 changed space deletion from "delete its cards" to "unfile them": with
 many-to-many, a card in three spaces shouldn't die because one is removed.
 
-**~39 days**, versus 55 with the phone. Groups 0, A, C, D can each start immediately;
+**~40 days**, versus 55 with the phone. Groups 0, A, C, D can each start immediately;
 only B, E, and F have real predecessors.
 
 If you want the shortest path to *feeling* different: **0 → C** is 8 days and gives you
