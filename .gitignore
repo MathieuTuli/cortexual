@@ -7,6 +7,7 @@ dist/
 
 # Local data (cards, spaces, uploaded media)
 data/
+backups/
 
 # Eval / one-off recovery artifacts
 eval-50/

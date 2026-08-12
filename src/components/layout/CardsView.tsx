@@ -9,11 +9,11 @@ export function CardsView() {
   const activeSpaceId = useSpacesStore((s) => s.activeSpaceId)
   const getCardsBySpace = useCardsStore((s) => s.getCardsBySpace)
   const isLoading = useCardsStore((s) => s.isLoading)
-  // getCardsBySpace reads these off the store, so subscribe to them for re-renders
-  const _allCards = useCardsStore((s) => s.cards)
-  const _filterTags = useCardsStore((s) => s.filterTags)
-  const _searchQuery = useCardsStore((s) => s.searchQuery)
-  void _allCards, _filterTags, _searchQuery
+  // getCardsBySpace reads these off the store rather than taking them as
+  // arguments, so subscribe to each one to re-render when they change.
+  useCardsStore((s) => s.cards)
+  useCardsStore((s) => s.filterTags)
+  useCardsStore((s) => s.searchQuery)
 
   const [viewMode] = useViewMode()
   const containerRef = useRef<HTMLDivElement>(null)

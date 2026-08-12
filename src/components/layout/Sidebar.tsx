@@ -1,5 +1,6 @@
 import { useSpacesStore, useCardsStore } from '@/core/stores'
 import { SpaceList } from '../spaces/SpaceList'
+import { ImportExport } from '../ImportExport'
 import { clsx } from 'clsx'
 
 export function Sidebar() {
@@ -42,6 +43,8 @@ export function Sidebar() {
       <div className="mt-4 flex-1 overflow-y-auto">
         <SpaceList />
       </div>
+
+      <ImportExport />
     </aside>
   )
 }

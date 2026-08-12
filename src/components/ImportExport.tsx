@@ -1,7 +1,51 @@
 import { useState } from 'react'
 import { importFromDirectory, downloadExport, clearDatabase } from '@/core/utils'
 import { useCardsStore } from '@/core/stores'
-import { Button, IconButton, ContextMenu, useContextMenu } from './ui'
+import { ContextMenu, useContextMenu } from './ui'
+import { clsx } from 'clsx'
+
+const ICON = {
+  import: <path d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14" />,
+  export: <path d="M12 15V3m0 0 4 4m-4-4L8 7M5 21h14" />,
+  more: <path d="M12 5h.01M12 12h.01M12 19h.01" />,
+}
+
+function Action({
+  icon,
+  label,
+  onClick,
+  disabled,
+  busy,
+}: {
+  icon: keyof typeof ICON
+  label: string
+  onClick: () => void
+  disabled?: boolean
+  busy?: boolean
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      title={label}
+      className={clsx(
+        'flex-1 inline-flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg',
+        'text-[11px] font-medium transition-colors',
+        'text-text-muted hover:text-text hover:bg-white/60',
+        'disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent',
+        busy && 'animate-pulse'
+      )}
+    >
+      <svg
+        width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+        strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+      >
+        {ICON[icon]}
+      </svg>
+      {label}
+    </button>
+  )
+}
 
 export function ImportExport() {
   const [isImporting, setIsImporting] = useState(false)
@@ -11,10 +55,11 @@ export function ImportExport() {
   const loadCards = useCardsStore((s) => s.loadCards)
   const { contextMenu, showContextMenu, hideContextMenu } = useContextMenu()
 
+  const busy = isImporting || isExporting || isClearing
+
   const handleImportDirectory = async () => {
-    // Check if File System Access API is supported
     if (!('showDirectoryPicker' in window)) {
-      setStatus('Directory picker not supported in this browser. Use Chrome or Edge.')
+      setStatus('Directory picker needs Chrome or Edge.')
       return
     }
 
@@ -22,29 +67,24 @@ export function ImportExport() {
       const directoryHandle = await window.showDirectoryPicker()
 
       setIsImporting(true)
-      setStatus('Scanning directory...')
+      setStatus('Scanning directory…')
 
-      const result = await importFromDirectory(directoryHandle, (progress) => {
-        setStatus(progress)
-      })
+      const result = await importFromDirectory(directoryHandle, setStatus)
 
-      // Log errors to console before they might get cleared
       if (result.errors.length > 0) {
         console.error('[Import] All errors:', result.errors)
       }
 
-      const statusMsg = `Imported: ${result.imported}, Skipped: ${result.skipped}${result.errors.length > 0 ? `, Errors: ${result.errors.length}` : ''}`
-      setStatus(statusMsg)
-      console.log(`[Import] Final result: ${statusMsg}`)
+      const errors = result.errors.length > 0 ? `, ${result.errors.length} errors` : ''
+      setStatus(`Imported ${result.imported}, skipped ${result.skipped}${errors}`)
 
-      // Reload cards
       await loadCards()
     } catch (error) {
-      if ((error as Error).name === 'AbortError') {
-        setStatus('Import cancelled')
-      } else {
-        setStatus(`Error: ${(error as Error).message}`)
-      }
+      setStatus(
+        (error as Error).name === 'AbortError'
+          ? 'Import cancelled'
+          : `Error: ${(error as Error).message}`
+      )
     } finally {
       setIsImporting(false)
     }
@@ -52,11 +92,11 @@ export function ImportExport() {
 
   const handleExport = async () => {
     setIsExporting(true)
-    setStatus('Exporting...')
+    setStatus('Exporting…')
 
     try {
       await downloadExport()
-      setStatus('Export complete! Check downloads.')
+      setStatus('Export complete.')
     } catch (error) {
       setStatus(`Error: ${(error as Error).message}`)
     } finally {
@@ -65,17 +105,15 @@ export function ImportExport() {
   }
 
   const handleClearDatabase = async () => {
-    if (!confirm('Are you sure you want to clear ALL cards and media? This cannot be undone.')) {
-      return
-    }
+    if (!confirm('Delete ALL cards and media? This cannot be undone.')) return
 
     setIsClearing(true)
-    setStatus('Clearing database...')
+    setStatus('Clearing…')
 
     try {
       await clearDatabase()
       await loadCards()
-      setStatus('Database cleared!')
+      setStatus('Cleared.')
     } catch (error) {
       setStatus(`Error: ${(error as Error).message}`)
     } finally {
@@ -83,62 +121,51 @@ export function ImportExport() {
     }
   }
 
-  const handleSettingsClick = (e: React.MouseEvent) => {
-    showContextMenu(e, [
-      {
-        label: isClearing ? 'Clearing...' : 'Clear All Data',
-        icon: '🗑️',
-        onClick: handleClearDatabase,
-        danger: true,
-        disabled: isClearing,
-      },
-    ])
-  }
-
   return (
-    <div className="p-3 border-t border-[#a8d4f0]">
-      <div className="flex items-center justify-between mb-2">
-        <p className="text-xs font-medium text-text-muted">Import / Export</p>
-        <IconButton
-          size="sm"
-          variant="ghost"
-          onClick={handleSettingsClick}
-          title="Settings"
-        >
-          ⚙️
-        </IconButton>
-      </div>
-
-      <div className="space-y-2">
-        <Button
-          size="sm"
-          variant="primary"
+    <div className="px-3 py-3 mt-auto border-t border-white/50">
+      <div className="flex items-center gap-0.5">
+        <Action
+          icon="import"
+          label={isImporting ? 'Importing' : 'Import'}
           onClick={handleImportDirectory}
-          disabled={isImporting}
-          className="w-full text-xs"
-        >
-          {isImporting ? 'Importing...' : 'Import Directory'}
-        </Button>
-
-        <Button
-          size="sm"
-          variant="default"
+          disabled={busy}
+          busy={isImporting}
+        />
+        <Action
+          icon="export"
+          label={isExporting ? 'Exporting' : 'Export'}
           onClick={handleExport}
-          disabled={isExporting}
-          className="w-full text-xs"
+          disabled={busy}
+          busy={isExporting}
+        />
+        <button
+          onClick={(e) =>
+            showContextMenu(e, [
+              {
+                label: isClearing ? 'Clearing…' : 'Clear all data',
+                onClick: handleClearDatabase,
+                danger: true,
+                disabled: isClearing,
+              },
+            ])
+          }
+          title="More"
+          aria-label="More"
+          className="w-7 h-7 flex-shrink-0 inline-flex items-center justify-center rounded-lg text-text-muted hover:text-text hover:bg-white/60 transition-colors"
         >
-          {isExporting ? 'Exporting...' : 'Export All'}
-        </Button>
+          <svg
+            width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+          >
+            {ICON.more}
+          </svg>
+        </button>
       </div>
 
-      {/* Status */}
       {status && (
-        <p className="text-[10px] text-text-muted mt-2 break-words">
-          {status}
-        </p>
+        <p className="text-[10px] leading-snug text-text-muted mt-2 px-1 break-words">{status}</p>
       )}
 
-      {/* Context Menu */}
       {contextMenu && (
         <ContextMenu
           items={contextMenu.items}
