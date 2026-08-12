@@ -4,7 +4,6 @@ import { useViewMode } from '@/core/hooks'
 import { useSelectionBox, SelectionBoxOverlay } from '../SelectionBox'
 import { MasonryGrid } from './MasonryGrid'
 import { CardList } from './CardList'
-import { CanvasView } from './CanvasView'
 
 export function CardsView() {
   const activeSpaceId = useSpacesStore((s) => s.activeSpaceId)
@@ -39,11 +38,6 @@ export function CardsView() {
         </p>
       </div>
     )
-  }
-
-  // Canvas owns its own pointer handling — the marquee would fight the pan.
-  if (viewMode === 'canvas') {
-    return <CanvasView cards={cards} />
   }
 
   return (
