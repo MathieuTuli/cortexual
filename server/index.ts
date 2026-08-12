@@ -16,6 +16,7 @@ import {
 import { fetchArticle, fetchLinkPreview, fetchTweet, normalizeTweet } from './content.ts'
 import { findRelated } from './related.ts'
 import { searchCards } from './search.ts'
+import { extractPostMedia } from './post-media.ts'
 
 ensureStore()
 
@@ -295,6 +296,54 @@ api.post('/related', async (c) => {
     return c.json({ related: await findRelated(text, limit ?? 4) })
   } catch (error) {
     return c.json({ error: (error as Error).message }, 500)
+  }
+})
+
+// Fill in a card's article metadata after the fact. Extraction takes seconds
+// — fetch, parse, readability — and the extension shouldn't make you wait for
+// it just to save a link.
+api.post('/cards/:id/enrich', async (c) => {
+  const id = c.req.param('id')
+  const { url } = await c.req.json<{ url: string }>()
+  if (!url) return c.json({ error: 'Missing url' }, 400)
+
+  try {
+    const article = await fetchArticle(url)
+    const cards = readJson<Row[]>(CARDS_FILE, [])
+    const card = cards.find((x) => x.id === id)
+    if (!card) return c.json({ error: 'No such card' }, 404)
+
+    // Never clobber a title the user typed; only fill what's empty.
+    if (!card.title && article.title) card.title = article.title
+    if (!card.author && article.author) card.author = article.author
+    if (!card.siteName && article.siteName) card.siteName = article.siteName
+    if (!card.preview && (article.title || article.excerpt || article.image)) {
+      card.preview = {
+        title: article.title,
+        description: article.excerpt,
+        image: article.image,
+        siteName: article.siteName,
+      }
+    }
+    card.updatedAt = new Date().toISOString()
+
+    writeJson(CARDS_FILE, cards)
+    return c.json({ success: true })
+  } catch (error) {
+    return c.json({ error: (error as Error).message }, 502)
+  }
+})
+
+// Resolve the media inside a post without saving anything, so the extension
+// can show what it found and let you pick one card or several.
+api.get('/post-media', async (c) => {
+  const url = c.req.query('url')
+  if (!url) return c.json({ error: 'Missing url' }, 400)
+  try {
+    const found = await extractPostMedia(url)
+    return c.json(found ?? { source: 'page', media: [] })
+  } catch (error) {
+    return c.json({ error: (error as Error).message }, 502)
   }
 })
 

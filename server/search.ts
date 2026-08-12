@@ -1,4 +1,10 @@
-import { CARDS_FILE, EMBEDDINGS_FILE, IMAGE_EMBEDDINGS_FILE, readJson } from './storage.ts'
+import {
+  CARDS_FILE,
+  EMBEDDINGS_FILE,
+  IMAGE_EMBEDDINGS_FILE,
+  VIDEO_EMBEDDINGS_FILE,
+  readJson,
+} from './storage.ts'
 import { decodeVector, dot, embedQueryForImages, embedText } from './embeddings.ts'
 
 interface Stored {
@@ -39,20 +45,35 @@ export async function searchCards(query: string, limit = 60): Promise<SearchHit[
 
   const textIndex = readJson<Stored>(EMBEDDINGS_FILE, {})
   const imageIndex = readJson<Stored>(IMAGE_EMBEDDINGS_FILE, {})
-  if (!Object.keys(textIndex).length && !Object.keys(imageIndex).length) return []
+  const videoIndex = readJson<Record<string, { vectors: string[] }>>(VIDEO_EMBEDDINGS_FILE, {})
+  if (![textIndex, imageIndex, videoIndex].some((i) => Object.keys(i).length)) return []
 
   const live = new Set(readJson<Array<{ id: string }>>(CARDS_FILE, []).map((c) => c.id))
 
   const [textQuery, imageQuery] = await Promise.all([
     Object.keys(textIndex).length ? embedText([trimmed]).then((v) => v[0]) : null,
-    Object.keys(imageIndex).length ? embedQueryForImages(trimmed) : null,
+    Object.keys(imageIndex).length || Object.keys(videoIndex).length
+      ? embedQueryForImages(trimmed)
+      : null,
   ])
 
   // Only the strongest slice of each index is fused; past that the tail is
   // noise and would dilute the other index's good hits.
   const HEAD = 40
   const textScores = textQuery ? scoreAgainst(textIndex, textQuery) : []
-  const imageScores = imageQuery ? scoreAgainst(imageIndex, imageQuery) : []
+  // A video scores by its best-matching frame: a clip that opens on a title
+  // card and cuts to a street is neither, and averaging would describe it as
+  // the blurry middle of both.
+  const videoScores = imageQuery
+    ? Object.entries(videoIndex).map(([id, entry]) => ({
+        id,
+        score: Math.max(...entry.vectors.map((v) => dot(imageQuery, decodeVector(v)))),
+      }))
+    : []
+
+  const imageScores = imageQuery
+    ? [...scoreAgainst(imageIndex, imageQuery), ...videoScores]
+    : []
 
   const textRanks = rank(textScores.filter((s) => s.score > 0.25))
   const imageRanks = rank(imageScores.sort((a, b) => b.score - a.score).slice(0, HEAD))

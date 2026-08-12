@@ -89,34 +89,37 @@ function embedFor(url) {
   return { embedType: 'generic' }
 }
 
+/**
+ * Saves immediately with what the tab already knows, then asks the server to
+ * fill in author, site and excerpt in the background. Article extraction is a
+ * fetch plus a full DOM parse — several seconds — and waiting for it made
+ * every save feel broken.
+ */
 export async function saveLink({ url, title, spaceIds = [], tags = [] }) {
-  const article = await getArticle(url)
   const { embedType, embedData } = embedFor(url)
 
-  return createCard(
+  const card = await createCard(
     baseCard({
       id: id('ext-link'),
       type: 'link',
       url,
       sourceUrl: url,
-      title: title || article.title || undefined,
-      author: article.author,
-      siteName: article.siteName,
+      title: title || undefined,
       embedType,
       embedData,
-      preview:
-        article.title || article.excerpt || article.image
-          ? {
-              title: article.title,
-              description: article.excerpt,
-              image: article.image,
-              siteName: article.siteName,
-            }
-          : undefined,
       spaceIds,
       tags,
     })
   )
+
+  // Deliberately not awaited.
+  fetch(`${API}/cards/${card.id}/enrich`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url }),
+  }).catch(() => {})
+
+  return card
 }
 
 export async function saveHighlight({ text, url, title, author, siteName, spaceIds = [], tags = [] }) {
@@ -158,4 +161,76 @@ export async function saveImage({ imageUrl, pageUrl, title, spaceIds = [], tags 
   })
 
   return card
+}
+
+export async function getPostMedia(url) {
+  try {
+    const res = await fetch(`${API}/post-media?url=${encodeURIComponent(url)}`, {
+      signal: AbortSignal.timeout(20000),
+    })
+    return res.ok ? await res.json() : { media: [] }
+  } catch {
+    return { media: [] }
+  }
+}
+
+async function attachMedia(cardId, item) {
+  // Downloaded through the worker so the card keeps the file rather than a
+  // hotlink that rots when the post comes down.
+  const blob = await (await fetch(item.url)).blob()
+  await fetch(`${API}/media/${cardId}`, {
+    method: 'POST',
+    headers: { 'Content-Type': blob.type || (item.kind === 'video' ? 'video/mp4' : 'image/jpeg') },
+    body: blob,
+  })
+}
+
+/**
+ * Turn a post's media into cards. `mode: 'single'` puts every image in one
+ * gallery card, which suits a carousel; `'separate'` gives each its own card.
+ * Videos always get their own card either way — a video card holds one file.
+ */
+export async function savePostMedia({ url, title, found, mode = 'single', spaceIds = [], tags = [] }) {
+  const images = found.media.filter((m) => m.kind === 'image')
+  const videos = found.media.filter((m) => m.kind === 'video')
+  const shared = {
+    sourceUrl: url,
+    author: found.author,
+    siteName: found.source === 'x' ? 'X' : found.source === 'instagram' ? 'Instagram' : undefined,
+    spaceIds,
+    tags,
+  }
+  const caption = found.text?.slice(0, 300) || undefined
+  const created = []
+
+  const groups = mode === 'single' && images.length > 0 ? [images] : images.map((i) => [i])
+  for (const group of groups) {
+    const card = baseCard({
+      ...shared,
+      id: id('ext-media'),
+      type: 'image',
+      mediaIds: [],
+      title: title || undefined,
+      caption,
+    })
+    await createCard(card)
+    for (const item of group) await attachMedia(card.id, item)
+    created.push(card)
+  }
+
+  for (const video of videos) {
+    const card = baseCard({
+      ...shared,
+      id: id('ext-media'),
+      type: 'video',
+      mediaId: '',
+      title: title || undefined,
+      caption,
+    })
+    await createCard(card)
+    await attachMedia(card.id, video)
+    created.push(card)
+  }
+
+  return created
 }

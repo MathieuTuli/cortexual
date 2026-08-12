@@ -1,9 +1,10 @@
-import { saveHighlight, saveImage, saveLink } from './api.js'
+import { getPostMedia, savePostMedia, saveHighlight, saveImage, saveLink } from './api.js'
 
 const MENU = {
   image: 'cortexual-save-image',
   selection: 'cortexual-save-selection',
   page: 'cortexual-save-page',
+  media: 'cortexual-save-media',
 }
 
 chrome.runtime.onInstalled.addListener(() => {
@@ -11,6 +12,7 @@ chrome.runtime.onInstalled.addListener(() => {
     chrome.contextMenus.create({ id: MENU.image, title: 'Save image to Cortexual', contexts: ['image'] })
     chrome.contextMenus.create({ id: MENU.selection, title: 'Save highlight to Cortexual', contexts: ['selection'] })
     chrome.contextMenus.create({ id: MENU.page, title: 'Save page to Cortexual', contexts: ['page', 'link'] })
+    chrome.contextMenus.create({ id: MENU.media, title: 'Save just the media from this post', contexts: ['page', 'link'] })
   })
 })
 
@@ -34,6 +36,11 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
         url: info.pageUrl || tab?.url,
         title: tab?.title,
       })
+    } else if (info.menuItemId === MENU.media) {
+      const url = info.linkUrl || info.pageUrl || tab?.url
+      const found = await getPostMedia(url)
+      if (!found.media?.length) throw new Error('no media found in that post')
+      await savePostMedia({ url, title: tab?.title, found, mode: 'single' })
     } else if (info.menuItemId === MENU.page) {
       await saveLink({ url: info.linkUrl || info.pageUrl || tab?.url, title: info.linkUrl ? undefined : tab?.title })
     }
