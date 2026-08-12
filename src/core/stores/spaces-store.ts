@@ -99,8 +99,9 @@ export const useSpacesStore = create<SpacesState>((set, get) => ({
       throw new Error('Cannot delete default space')
     }
 
-    // Delete all cards in this space first
-    await useCardsStore.getState().deleteCardsBySpaceId(id)
+    // Unfile the cards rather than deleting them — a card may live in other
+    // spaces too, and one that doesn't just becomes uncategorized.
+    await useCardsStore.getState().removeSpaceFromCards(id)
 
     set((state) => ({
       spaces: state.spaces.filter((s) => s.id !== id),

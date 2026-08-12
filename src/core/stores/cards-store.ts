@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { api } from '../api'
 import type { Card, CreateCardInput, UpdateCardInput } from '../types'
+import { cardIsInSpace } from '../types'
 import { generateId } from '../utils'
 
 export interface NewCard {
@@ -20,8 +21,9 @@ interface CardsState {
   createCards: (newCards: NewCard[], onProgress?: (done: number, total: number) => void) => Promise<Card[]>
   updateCard: (id: string, changes: UpdateCardInput) => Promise<void>
   deleteCard: (id: string) => Promise<void>
-  deleteCardsBySpaceId: (spaceId: string) => Promise<void>
-  moveCardsToSpace: (cardIds: string[], spaceId: string) => Promise<void>
+  removeSpaceFromCards: (spaceId: string) => Promise<void>
+  addCardsToSpace: (cardIds: string[], spaceId: string) => Promise<void>
+  removeCardsFromSpace: (cardIds: string[], spaceId: string) => Promise<void>
   setSearchQuery: (query: string) => void
   setFilterTags: (tags: string[]) => void
   addFilterTag: (tag: string) => void
@@ -123,30 +125,69 @@ export const useCardsStore = create<CardsState>((set, get) => ({
     await api.deleteCard(id)
   },
 
-  deleteCardsBySpaceId: async (spaceId) => {
-    const { cards } = get()
-    const cardsToDelete = cards.filter((c) => c.spaceId === spaceId)
-
-    set((state) => ({
-      cards: state.cards.filter((c) => c.spaceId !== spaceId),
-    }))
-
-    for (const card of cardsToDelete) {
-      await api.deleteCard(card.id)
-    }
-  },
-
-  moveCardsToSpace: async (cardIds, spaceId) => {
+  /**
+   * Deleting a space unfiles its cards; it doesn't delete them. A card that
+   * also lived elsewhere keeps those memberships, and one that didn't falls
+   * back to uncategorized.
+   */
+  removeSpaceFromCards: async (spaceId) => {
     const updatedAt = new Date().toISOString()
+    const affected = get().cards.filter((c) => c.spaceIds.includes(spaceId))
 
     set((state) => ({
       cards: state.cards.map((c) =>
-        cardIds.includes(c.id) ? { ...c, spaceId, updatedAt } as Card : c
+        c.spaceIds.includes(spaceId)
+          ? ({ ...c, spaceIds: c.spaceIds.filter((s) => s !== spaceId), updatedAt } as Card)
+          : c
       ),
     }))
 
-    for (const id of cardIds) {
-      await api.updateCard(id, { spaceId, updatedAt })
+    for (const card of affected) {
+      await api.updateCard(card.id, {
+        spaceIds: card.spaceIds.filter((s) => s !== spaceId),
+        updatedAt,
+      })
+    }
+  },
+
+  addCardsToSpace: async (cardIds, spaceId) => {
+    const updatedAt = new Date().toISOString()
+    const changed = get().cards.filter(
+      (c) => cardIds.includes(c.id) && !c.spaceIds.includes(spaceId)
+    )
+
+    set((state) => ({
+      cards: state.cards.map((c) =>
+        changed.some((x) => x.id === c.id)
+          ? ({ ...c, spaceIds: [...c.spaceIds, spaceId], updatedAt } as Card)
+          : c
+      ),
+    }))
+
+    for (const card of changed) {
+      await api.updateCard(card.id, { spaceIds: [...card.spaceIds, spaceId], updatedAt })
+    }
+  },
+
+  removeCardsFromSpace: async (cardIds, spaceId) => {
+    const updatedAt = new Date().toISOString()
+    const changed = get().cards.filter(
+      (c) => cardIds.includes(c.id) && c.spaceIds.includes(spaceId)
+    )
+
+    set((state) => ({
+      cards: state.cards.map((c) =>
+        changed.some((x) => x.id === c.id)
+          ? ({ ...c, spaceIds: c.spaceIds.filter((s) => s !== spaceId), updatedAt } as Card)
+          : c
+      ),
+    }))
+
+    for (const card of changed) {
+      await api.updateCard(card.id, {
+        spaceIds: card.spaceIds.filter((s) => s !== spaceId),
+        updatedAt,
+      })
     }
   },
 
@@ -180,7 +221,7 @@ export const useCardsStore = create<CardsState>((set, get) => ({
     const { cards, searchQuery, filterTags } = get()
 
     let filtered = spaceId
-      ? cards.filter((c) => c.spaceId === spaceId)
+      ? cards.filter((c) => cardIsInSpace(c, spaceId))
       : cards
 
     if (searchQuery) {

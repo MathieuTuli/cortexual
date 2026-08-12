@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { Space } from '@/core/types'
+import { cardIsInSpace } from '@/core/types'
 import { useSpacesStore, useCardsStore } from '@/core/stores'
 import { clsx } from 'clsx'
 import { ContextMenu, useContextMenu, type ContextMenuItem, Modal, Input, Button } from '../ui'
@@ -26,7 +27,7 @@ export function SpaceItem({ space }: SpaceItemProps) {
   const [editColor, setEditColor] = useState(space.color || null)
   const [editIcon, setEditIcon] = useState(space.icon || '')
 
-  const cardCount = cards.filter((c) => c.spaceId === space.id).length
+  const cardCount = cards.filter((c) => cardIsInSpace(c, space.id)).length
   const isActive = activeSpaceId === space.id
 
   const handleContextMenu = (e: React.MouseEvent) => {

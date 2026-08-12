@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useDropzone } from 'react-dropzone'
-import { useAppStore, useCardsStore, useSpacesStore } from '@/core/stores'
+import { useAppStore, useCardsStore } from '@/core/stores'
 import type { Card, ImageCard, Subnote } from '@/core/types'
 import { generateId, filesFromClipboard, isImage } from '@/core/utils'
 import { api } from '@/core/api'
 import { Modal, Button, Input, Textarea, TagInput } from '../ui'
+import { SpacePicker } from '../spaces'
 import { clsx } from 'clsx'
 
 async function generateThumbnail(file: File): Promise<string> {
@@ -46,7 +47,6 @@ export function EditCardModal() {
   const cards = useCardsStore((s) => s.cards)
   const updateCard = useCardsStore((s) => s.updateCard)
   const deleteCard = useCardsStore((s) => s.deleteCard)
-  const spaces = useSpacesStore((s) => s.spaces)
 
   const allTags = Array.from(new Set(cards.flatMap((c) => c.tags))).sort()
   const card = cards.find((c) => c.id === editingCardId)
@@ -55,7 +55,7 @@ export function EditCardModal() {
   const [content, setContent] = useState('')
   const [caption, setCaption] = useState('')
   const [tags, setTags] = useState<string[]>([])
-  const [spaceId, setSpaceId] = useState('')
+  const [spaceIds, setSpaceIds] = useState<string[]>([])
   const [subnotes, setSubnotes] = useState<Subnote[]>([])
   const [newSubnote, setNewSubnote] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -71,7 +71,7 @@ export function EditCardModal() {
       setContent('content' in card ? (card.content as string) : '')
       setCaption('caption' in card ? (card.caption as string) || '' : '')
       setTags([...card.tags])
-      setSpaceId(card.spaceId)
+      setSpaceIds([...card.spaceIds])
       setSubnotes([...card.subnotes])
       setNewImageFiles([])
       setNewImagePreviews([])
@@ -141,7 +141,7 @@ export function EditCardModal() {
       const updates: Partial<Card> = {
         title: title || undefined,
         tags,
-        spaceId,
+        spaceIds,
         subnotes,
       }
       if (card.type === 'note') {
@@ -275,20 +275,7 @@ export function EditCardModal() {
           label="Tags"
         />
 
-        <div>
-          <label className="section-label block mb-1.5">Space</label>
-          <select
-            value={spaceId}
-            onChange={(e) => setSpaceId(e.target.value)}
-            className="w-full px-3.5 py-2 rounded-lg bg-white border border-[var(--color-border)] text-sm text-text focus:outline-none focus:border-accent-primary focus:ring-2 focus:ring-accent-primary/20 hover:border-[var(--color-border-bold)]"
-          >
-            {spaces.map((space) => (
-              <option key={space.id} value={space.id}>
-                {space.icon ? `${space.icon} ` : ''}{space.name}
-              </option>
-            ))}
-          </select>
-        </div>
+        <SpacePicker value={spaceIds} onChange={setSpaceIds} />
 
         <div className="border-t border-[var(--color-border)] pt-4">
           <button

@@ -1,5 +1,5 @@
 import type { Card, LinkCard } from '@/core/types'
-import { DEFAULT_SPACE_ID } from '@/core/types'
+import { cardSpaces } from '@/core/types'
 import { useSpacesStore } from '@/core/stores'
 import { useCardThumbnail, useLinkPreview } from '@/core/hooks'
 import { useCardActions } from './use-card-actions'
@@ -96,8 +96,9 @@ export function CardRow({ card }: { card: Card }) {
   const spaces = useSpacesStore((s) => s.spaces)
   const { isSelected, onClick, onMenu, menus } = useCardActions(card)
 
-  const space = spaces.find((s) => s.id === card.spaceId)
-  const showSpaceLabel = space && card.spaceId !== DEFAULT_SPACE_ID
+  const memberSpaces = cardSpaces(card, spaces)
+  const space = memberSpaces[0]
+  const extraSpaces = memberSpaces.length - 1
   const summary = card.type === 'link' ? null : rowSummary(card)
 
   return (
@@ -155,13 +156,16 @@ export function CardRow({ card }: { card: Card }) {
           </div>
         )}
 
-        {showSpaceLabel && (
+        {space && (
           <span className="hidden md:inline-flex items-center gap-1.5 flex-shrink-0 text-[11px] text-text-muted max-w-[140px]">
             <span
               className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-              style={{ backgroundColor: space?.color || '#94a3b8' }}
+              style={{ backgroundColor: space.color || '#94a3b8' }}
             />
-            <span className="truncate">{space?.name}</span>
+            <span className="truncate">
+              {space.name}
+              {extraSpaces > 0 && ` +${extraSpaces}`}
+            </span>
           </span>
         )}
 

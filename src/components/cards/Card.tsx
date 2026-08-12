@@ -1,5 +1,5 @@
 import type { Card as CardType } from '@/core/types'
-import { DEFAULT_SPACE_ID } from '@/core/types'
+import { cardSpaces } from '@/core/types'
 import { useSpacesStore } from '@/core/stores'
 import { CardNote } from './CardNote'
 import { CardMedia } from './CardMedia'
@@ -41,8 +41,9 @@ export function Card({ card }: CardProps) {
   const spaces = useSpacesStore((s) => s.spaces)
   const { isSelected, onClick, onMenu, menus } = useCardActions(card)
 
-  const space = spaces.find((s) => s.id === card.spaceId)
-  const showSpaceLabel = space && card.spaceId !== DEFAULT_SPACE_ID
+  const memberSpaces = cardSpaces(card, spaces)
+  const space = memberSpaces[0]
+  const extraSpaces = memberSpaces.length - 1
 
   const isMediaTop = card.type === 'image' || card.type === 'video' || card.type === 'link'
 
@@ -106,14 +107,15 @@ export function Card({ card }: CardProps) {
 
           <div className="flex items-center justify-between gap-2 mt-2">
             <div className="flex items-center gap-1.5 min-w-0">
-              {showSpaceLabel && (
+              {space && (
                 <>
                   <span
                     className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                    style={{ backgroundColor: space?.color || '#94a3b8' }}
+                    style={{ backgroundColor: space.color || '#94a3b8' }}
                   />
                   <span className="text-[11px] text-text-muted truncate">
-                    {space?.name}
+                    {space.name}
+                    {extraSpaces > 0 && ` +${extraSpaces}`}
                   </span>
                 </>
               )}

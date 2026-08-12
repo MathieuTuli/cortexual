@@ -14,6 +14,17 @@ function getRandomSpaceColor(): string {
   return SPACE_COLORS[Math.floor(Math.random() * SPACE_COLORS.length)]
 }
 
+/**
+ * A card can sit in several spaces, so the CSV `space` column is pipe-separated
+ * like `media`. "Uncategorized" is the absence of a space, not one of them.
+ */
+function parseSpaceNames(value: string | undefined): string[] {
+  return (value || '')
+    .split('|')
+    .map((name) => name.trim())
+    .filter((name) => name && name.toLowerCase() !== 'uncategorized')
+}
+
 interface ImportResult {
   imported: number
   skipped: number
@@ -99,8 +110,7 @@ export async function importFromDirectory(
   const spaceNamesToCreate = new Set<string>()
   for (const csvCard of csvCards) {
     if (existingCardIds.has(csvCard.id)) continue
-    const spaceName = csvCard.space || ''
-    if (spaceName && spaceName.toLowerCase() !== 'uncategorized') {
+    for (const spaceName of parseSpaceNames(csvCard.space)) {
       const exists = existingSpaces.some(
         (s) => s.name.toLowerCase() === spaceName.toLowerCase() && s.deletedAt === null
       )
@@ -173,14 +183,9 @@ export async function importFromDirectory(
     const tags = parseTags(csvCard.tags)
     const cardNow = csvCard.created || new Date().toISOString()
 
-    // Resolve space ID
-    const spaceName = csvCard.space || ''
-    let spaceId: string
-    if (!spaceName || spaceName.toLowerCase() === 'uncategorized') {
-      spaceId = DEFAULT_SPACE_ID
-    } else {
-      spaceId = spaceNameToId.get(spaceName.toLowerCase()) || DEFAULT_SPACE_ID
-    }
+    const spaceIds = parseSpaceNames(csvCard.space)
+      .map((name) => spaceNameToId.get(name.toLowerCase()))
+      .filter((id): id is string => Boolean(id))
 
     let card: Card
 
@@ -188,7 +193,7 @@ export async function importFromDirectory(
       card = {
         id: csvCard.id,
         type: 'image',
-        spaceId,
+        spaceIds,
         title: csvCard.title || undefined,
         mediaIds: [],
         caption: csvCard.note || undefined,
@@ -230,7 +235,7 @@ export async function importFromDirectory(
       card = {
         id: csvCard.id,
         type: 'video',
-        spaceId,
+        spaceIds,
         title: csvCard.title || undefined,
         mediaId: '',
         caption: csvCard.note || undefined,
@@ -288,7 +293,7 @@ export async function importFromDirectory(
       card = {
         id: csvCard.id,
         type: 'link',
-        spaceId,
+        spaceIds,
         title: csvCard.title || undefined,
         url: csvCard.url,
         embedType: parsed.embedType,
@@ -304,7 +309,7 @@ export async function importFromDirectory(
       card = {
         id: csvCard.id,
         type: 'note',
-        spaceId,
+        spaceIds,
         title: csvCard.title || undefined,
         content: csvCard.content || csvCard.note || '',
         tags,
@@ -388,7 +393,10 @@ export async function exportToFolder(): Promise<{ csv: Blob; mediaFiles: { name:
       note: (card.type === 'image' || card.type === 'video') ? ((card as ImageCard | VideoCard).caption || '') : '',
       tags: stringifyTags(card.tags),
       created: card.createdAt,
-      space: spaceIdToName.get(card.spaceId) || 'Uncategorized',
+      space: card.spaceIds
+        .map((id) => spaceIdToName.get(id))
+        .filter(Boolean)
+        .join('|'),
       media: '',
     }
 

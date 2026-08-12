@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { Card } from '@/core/types'
+import { DEFAULT_SPACE_ID } from '@/core/types'
 import { useAppStore, useCardsStore, useSpacesStore } from '@/core/stores'
 import { ContextMenu, useContextMenu, type ContextMenuItem } from '../ui'
 
@@ -14,11 +15,12 @@ export function useCardActions(card: Card) {
   const toggleCardSelection = useAppStore((s) => s.toggleCardSelection)
   const isSelecting = useAppStore((s) => s.isSelecting)
   const deleteCard = useCardsStore((s) => s.deleteCard)
-  const moveCardsToSpace = useCardsStore((s) => s.moveCardsToSpace)
+  const addCardsToSpace = useCardsStore((s) => s.addCardsToSpace)
+  const removeCardsFromSpace = useCardsStore((s) => s.removeCardsFromSpace)
   const spaces = useSpacesStore((s) => s.spaces)
 
   const { contextMenu, showContextMenu, hideContextMenu } = useContextMenu()
-  const [moveMenuPosition, setMoveMenuPosition] = useState<{ x: number; y: number } | null>(null)
+  const [spaceMenuPosition, setSpaceMenuPosition] = useState<{ x: number; y: number } | null>(null)
 
   const onClick = (e: React.MouseEvent) => {
     if (e.shiftKey || e.ctrlKey || e.metaKey) {
@@ -40,9 +42,9 @@ export function useCardActions(card: Card) {
       { label: 'Edit', icon: '✏️', onClick: () => openEditModal(card.id) },
       { label: '', divider: true, onClick: () => {} },
       {
-        label: 'Move to Space',
+        label: 'Spaces',
         icon: '📁',
-        onClick: () => setMoveMenuPosition({ x: e.clientX, y: e.clientY }),
+        onClick: () => setSpaceMenuPosition({ x: e.clientX, y: e.clientY }),
       },
       { label: '', divider: true, onClick: () => {} },
       {
@@ -57,15 +59,23 @@ export function useCardActions(card: Card) {
     showContextMenu(e, items)
   }
 
-  const moveMenuItems: ContextMenuItem[] = spaces.map((s) => ({
-    label: s.name,
-    icon: s.icon || (s.isDefault ? '📥' : '📁'),
-    onClick: async () => {
-      await moveCardsToSpace([card.id], s.id)
-      setMoveMenuPosition(null)
-    },
-    disabled: s.id === card.spaceId,
-  }))
+  // A card can sit in several spaces, so this menu toggles membership rather
+  // than moving the card. Uncategorized isn't a real space — it's what you get
+  // by leaving all of them.
+  const spaceMenuItems: ContextMenuItem[] = spaces
+    .filter((s) => s.id !== DEFAULT_SPACE_ID)
+    .map((s) => {
+      const member = card.spaceIds.includes(s.id)
+      return {
+        label: member ? `✓ ${s.name}` : s.name,
+        icon: s.icon || '📁',
+        onClick: async () => {
+          if (member) await removeCardsFromSpace([card.id], s.id)
+          else await addCardsToSpace([card.id], s.id)
+          setSpaceMenuPosition(null)
+        },
+      }
+    })
 
   const menus = (
     <>
@@ -76,11 +86,11 @@ export function useCardActions(card: Card) {
           onClose={hideContextMenu}
         />
       )}
-      {moveMenuPosition && (
+      {spaceMenuPosition && (
         <ContextMenu
-          items={moveMenuItems}
-          position={moveMenuPosition}
-          onClose={() => setMoveMenuPosition(null)}
+          items={spaceMenuItems}
+          position={spaceMenuPosition}
+          onClose={() => setSpaceMenuPosition(null)}
         />
       )}
     </>

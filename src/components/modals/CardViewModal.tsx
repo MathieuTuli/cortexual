@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useAppStore, useCardsStore, useSpacesStore } from '@/core/stores'
+import { cardSpaces } from '@/core/types'
 import { api } from '@/core/api'
 import { Modal, Button, TagInput } from '../ui'
 import { YouTubeEmbed } from '../embeds/YouTubeEmbed'
@@ -20,7 +21,7 @@ export function CardViewModal() {
   const [tags, setTags] = useState<string[]>([])
 
   const card = cards.find((c) => c.id === viewingCardId)
-  const space = card ? spaces.find((s) => s.id === card.spaceId) : null
+  const memberSpaces = card ? cardSpaces(card, spaces) : []
   const allTags = Array.from(new Set(cards.flatMap((c) => c.tags))).sort()
 
   // Sync tags from card
@@ -244,12 +245,12 @@ export function CardViewModal() {
 
         <div className="flex items-center justify-between text-xs text-text-muted pt-4 border-t border-[var(--color-border)]">
           <div className="flex items-center gap-3">
-            {space && (
-              <span className="inline-flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: space.color || '#94a3b8' }} />
-                {space.name}
+            {memberSpaces.map((s) => (
+              <span key={s.id} className="inline-flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: s.color || '#94a3b8' }} />
+                {s.name}
               </span>
-            )}
+            ))}
             <span>{new Date(card.createdAt).toLocaleDateString()}</span>
           </div>
         </div>

@@ -6,6 +6,7 @@ import { DEFAULT_SPACE_ID } from '@/core/types'
 import { parseUrl, getYouTubeThumbnail, filesFromClipboard, isImage, isMedia } from '@/core/utils'
 import { api } from '@/core/api'
 import { Modal, Button, Input, Textarea, TagInput } from '../ui'
+import { SpacePicker } from '../spaces'
 import { useDropzone } from 'react-dropzone'
 import { clsx } from 'clsx'
 
@@ -49,7 +50,6 @@ export function CreateCardModal() {
   const defaultType = useAppStore((s) => s.createModalDefaultType)
   const createCard = useCardsStore((s) => s.createCard)
   const createCards = useCardsStore((s) => s.createCards)
-  const spaces = useSpacesStore((s) => s.spaces)
   const activeSpaceId = useSpacesStore((s) => s.activeSpaceId)
   const cards = useCardsStore((s) => s.cards)
 
@@ -62,7 +62,9 @@ export function CreateCardModal() {
   const [url, setUrl] = useState('')
   const [caption, setCaption] = useState('')
   const [tags, setTags] = useState<string[]>([])
-  const [spaceId, setSpaceId] = useState(activeSpaceId || DEFAULT_SPACE_ID)
+  const [spaceIds, setSpaceIds] = useState<string[]>(
+    activeSpaceId && activeSpaceId !== DEFAULT_SPACE_ID ? [activeSpaceId] : []
+  )
   const [staged, setStaged] = useState<StagedMedia[]>([])
   const [groupMode, setGroupMode] = useState<GroupMode>('file')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -138,7 +140,7 @@ export function CreateCardModal() {
     setUrl('')
     setCaption('')
     setTags([])
-    setSpaceId(activeSpaceId || DEFAULT_SPACE_ID)
+    setSpaceIds(activeSpaceId && activeSpaceId !== DEFAULT_SPACE_ID ? [activeSpaceId] : [])
     staged.forEach((item) => URL.revokeObjectURL(item.preview))
     setStaged([])
     setGroupMode('file')
@@ -154,7 +156,7 @@ export function CreateCardModal() {
   // Images become cards at whatever granularity groupMode asks for; a video
   // card holds one file, so videos are always one apiece.
   const buildMediaCards = async (): Promise<NewCard[]> => {
-    const shared = { spaceId, title: title || undefined, caption: caption || undefined, tags, subnotes: [] }
+    const shared = { spaceIds, title: title || undefined, caption: caption || undefined, tags, subnotes: [] }
     const thumbnails = new Map<File, string>()
     for (const { file } of stagedImages) {
       thumbnails.set(file, await generateThumbnail(file))
@@ -187,7 +189,7 @@ export function CreateCardModal() {
       if (cardType === 'note') {
         input = {
           type: 'note',
-          spaceId,
+          spaceIds,
           title: title || undefined,
           content,
           tags,
@@ -211,7 +213,7 @@ export function CreateCardModal() {
 
         input = {
           type: 'link',
-          spaceId,
+          spaceIds,
           title: title || undefined,
           url,
           embedType: parsed.embedType,
@@ -402,20 +404,7 @@ export function CreateCardModal() {
             label="Tags"
           />
 
-          <div>
-            <label className="section-label block mb-1.5">Space</label>
-            <select
-              value={spaceId}
-              onChange={(e) => setSpaceId(e.target.value)}
-              className="w-full px-3.5 py-2 rounded-lg bg-white border border-[var(--color-border)] text-sm text-text focus:outline-none focus:border-accent-primary focus:ring-2 focus:ring-accent-primary/20 hover:border-[var(--color-border-bold)]"
-            >
-              {spaces.map((space) => (
-                <option key={space.id} value={space.id}>
-                  {space.icon ? `${space.icon} ` : ''}{space.name}
-                </option>
-              ))}
-            </select>
-          </div>
+          <SpacePicker value={spaceIds} onChange={setSpaceIds} />
         </div>
 
         <div className="flex justify-end gap-2 mt-6">

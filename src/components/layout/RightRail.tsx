@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { useCardsStore, useSpacesStore } from '@/core/stores'
 import type { LinkCard } from '@/core/types'
+import { cardIsInSpace } from '@/core/types'
 import { getFavicon, getHostname } from '@/core/utils'
 import { clsx } from 'clsx'
 
@@ -23,7 +24,7 @@ export function RightRail() {
   const activeSpaceId = useSpacesStore((s) => s.activeSpaceId)
 
   const scopedCards = useMemo(
-    () => (activeSpaceId ? cards.filter((c) => c.spaceId === activeSpaceId) : cards),
+    () => (activeSpaceId ? cards.filter((c) => cardIsInSpace(c, activeSpaceId)) : cards),
     [cards, activeSpaceId],
   )
 

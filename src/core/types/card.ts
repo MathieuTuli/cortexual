@@ -13,7 +13,8 @@ export type CardType = z.infer<typeof CardTypeEnum>
 
 export const CardBaseSchema = z.object({
   id: z.string(),
-  spaceId: z.string(),
+  /** Spaces this card belongs to. Empty means uncategorized. */
+  spaceIds: z.array(z.string()),
   type: CardTypeEnum,
   title: z.string().optional(),
   tags: z.array(z.string()),
