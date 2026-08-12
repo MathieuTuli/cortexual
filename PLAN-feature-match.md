@@ -253,7 +253,7 @@ Do this when whole-file JSON actually hurts: noticeable save latency, a corrupte
 | 1 | 0 — safety net | 2d | **done** `206c9cc` | Everything after is safer; two live regressions fixed |
 | 2 | A — schema | 4d | **done** `af7fce0` `4cce9cd` `58d3e1c` | Blocks canvas + importers; cheapest structural win |
 | 3 | C — intelligence | 6d | ← next | Highest daily-use payoff, zero infrastructure |
-| 4 | B — canvas | 5.5d | | The marquee feature, now unblocked by A1 |
+| 4 | B — canvas | 5.5d | **done** `6b0c0d2` `eccc340` | The marquee feature, now unblocked by A1 |
 | 5 | D — daemon | 3.5d | | Only if you want the extension |
 | 6 | E — extension | 11d | | Capture friction is what kills tools like this |
 | 7 | F — ingest | 8d | | X + Instagram archives, article extractor, batch URLs |
@@ -263,6 +263,8 @@ Do this when whole-file JSON actually hurts: noticeable save latency, a corrupte
 base — the quote body belongs to the highlight card as `text`, not to every card.
 A1 changed space deletion from "delete its cards" to "unfile them": with
 many-to-many, a card in three spaces shouldn't die because one is removed.
+B2 left the marquee out of canvas — it would contend with the pan gesture for
+the same pointer on the same background. Grid and list keep it.
 
 **~40 days**, versus 55 with the phone. Groups 0, A, C, D can each start immediately;
 only B, E, and F have real predecessors.
