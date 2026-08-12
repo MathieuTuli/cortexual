@@ -1,0 +1,33 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <div id="offline" hidden>
+      <p class="title">Cortexual isn't running</p>
+      <p class="muted">Start it with <code>npm run dev</code> or <code>npm run serve</code>.</p>
+    </div>
+
+    <div id="app" hidden>
+      <p class="title" id="page-title"></p>
+      <p class="muted" id="page-url"></p>
+
+      <label class="label">Spaces</label>
+      <div id="spaces" class="chips"></div>
+
+      <input id="tags" class="input" placeholder="tags, comma separated" />
+
+      <button id="save" class="save">Save page</button>
+      <p id="status" class="muted status"></p>
+
+      <div id="related-wrap" hidden>
+        <p class="label">Related in your library</p>
+        <ul id="related" class="related"></ul>
+      </div>
+    </div>
+
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>

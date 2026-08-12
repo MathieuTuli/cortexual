@@ -14,6 +14,7 @@ import {
   writeJson,
 } from './storage.ts'
 import { fetchArticle, fetchLinkPreview, fetchTweet, normalizeTweet } from './content.ts'
+import { findRelated } from './related.ts'
 
 ensureStore()
 
@@ -281,6 +282,18 @@ api.get('/article', async (c) => {
     return c.json(await fetchArticle(url))
   } catch (error) {
     return c.json({ error: (error as Error).message }, 502)
+  }
+})
+
+// Same-library related lookup for the extension, which has no embedder of
+// its own. The app uses its web worker instead.
+api.post('/related', async (c) => {
+  const { text, limit } = await c.req.json<{ text: string; limit?: number }>()
+  if (!text) return c.json({ error: 'Missing text' }, 400)
+  try {
+    return c.json({ related: await findRelated(text, limit ?? 4) })
+  } catch (error) {
+    return c.json({ error: (error as Error).message }, 500)
   }
 })
 
