@@ -45,6 +45,21 @@ export const api = {
     return res.json()
   },
 
+  // Canvas layouts
+  async getLayouts() {
+    const res = await fetch(`${API_BASE}/layouts`)
+    return res.json()
+  },
+
+  async saveLayout(spaceKey: string, positions: Record<string, unknown>, removed: string[] = []) {
+    const res = await fetch(`${API_BASE}/layouts/${encodeURIComponent(spaceKey)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ positions, removed }),
+    })
+    return res.json()
+  },
+
   // Spaces
   async getSpaces() {
     const res = await fetch(`${API_BASE}/spaces`)

@@ -17,6 +17,7 @@ if (PROXY_URL) {
 const DATA_DIR = path.resolve(__dirname, 'data')
 const CARDS_FILE = path.join(DATA_DIR, 'cards.json')
 const SPACES_FILE = path.join(DATA_DIR, 'spaces.json')
+const LAYOUTS_FILE = path.join(DATA_DIR, 'layouts.json')
 const MEDIA_DIR = path.join(DATA_DIR, 'media')
 
 // Ensure data directories exist
@@ -25,6 +26,7 @@ if (!fs.existsSync(MEDIA_DIR)) fs.mkdirSync(MEDIA_DIR, { recursive: true })
 
 // Initialize files if they don't exist
 if (!fs.existsSync(CARDS_FILE)) fs.writeFileSync(CARDS_FILE, '[]')
+if (!fs.existsSync(LAYOUTS_FILE)) fs.writeFileSync(LAYOUTS_FILE, '{}')
 if (!fs.existsSync(SPACES_FILE)) {
   fs.writeFileSync(SPACES_FILE, JSON.stringify([
     { id: 'default', name: 'General', icon: '📚', color: '#0066cc', sortOrder: 0, isDefault: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), deletedAt: null }
@@ -251,6 +253,37 @@ function fileStoragePlugin() {
           }
           res.setHeader('Content-Type', 'application/json')
           res.end(JSON.stringify({ success: true }))
+          return
+        }
+        next()
+      })
+
+      // GET /api/layouts - every space's canvas positions
+      server.middlewares.use((req: any, res: any, next: any) => {
+        if (req.url === '/api/layouts' && req.method === 'GET') {
+          res.setHeader('Content-Type', 'application/json')
+          res.end(fs.readFileSync(LAYOUTS_FILE, 'utf-8'))
+          return
+        }
+        next()
+      })
+
+      // PUT /api/layouts/:spaceKey - merge positions into one space's layout.
+      // Merged rather than replaced so a drag only has to send what it moved.
+      server.middlewares.use((req: any, res: any, next: any) => {
+        const match = req.url?.match(/^\/api\/layouts\/([^/]+)$/)
+        if (match && req.method === 'PUT') {
+          const spaceKey = decodeURIComponent(match[1])
+          const layouts = JSON.parse(fs.readFileSync(LAYOUTS_FILE, 'utf-8'))
+          const positions = req.body?.positions || {}
+          const removed: string[] = req.body?.removed || []
+
+          layouts[spaceKey] = { ...(layouts[spaceKey] || {}), ...positions }
+          for (const cardId of removed) delete layouts[spaceKey][cardId]
+
+          fs.writeFileSync(LAYOUTS_FILE, JSON.stringify(layouts, null, 2))
+          res.setHeader('Content-Type', 'application/json')
+          res.end(JSON.stringify(layouts[spaceKey]))
           return
         }
         next()
