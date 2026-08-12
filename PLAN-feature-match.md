@@ -252,11 +252,11 @@ Do this when whole-file JSON actually hurts: noticeable save latency, a corrupte
 |---|---|---|---|---|
 | 1 | 0 — safety net | 2d | **done** `206c9cc` | Everything after is safer; two live regressions fixed |
 | 2 | A — schema | 4d | **done** `af7fce0` `4cce9cd` `58d3e1c` | Blocks canvas + importers; cheapest structural win |
-| 3 | C — intelligence | 6d | ← next | Highest daily-use payoff, zero infrastructure |
+| 3 | C — intelligence | 6d | **done** `afeaa6b` | Highest daily-use payoff, zero infrastructure |
 | 4 | B — canvas | 5.5d | **done** `6b0c0d2` `eccc340` | The marquee feature, now unblocked by A1 |
-| 5 | D — daemon | 3.5d | | Only if you want the extension |
-| 6 | E — extension | 11d | | Capture friction is what kills tools like this |
-| 7 | F — ingest | 8d | | X + Instagram archives, article extractor, batch URLs |
+| 5 | D — daemon | 3.5d | **done** `82dfdc4` | Only if you want the extension |
+| 6 | E — extension | 11d | **done** `032f1cb` | Capture friction is what kills tools like this |
+| 7 | F — ingest | 8d | **done** `709abe0` `3fff860` | X + Instagram archives, article extractor, batch URLs |
 | — | X1 — SQLite | 3d | | When JSON hurts |
 
 **Deviations from spec.** A2 dropped the planned `excerpt` field from the card
