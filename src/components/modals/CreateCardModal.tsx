@@ -3,7 +3,7 @@ import { useAppStore, useCardsStore, useSpacesStore } from '@/core/stores'
 import type { NewCard } from '@/core/stores/cards-store'
 import type { CardType, CreateCardInput } from '@/core/types'
 import { DEFAULT_SPACE_ID } from '@/core/types'
-import { parseUrl, getYouTubeThumbnail, filesFromClipboard, isImage, isMedia } from '@/core/utils'
+import { parseUrl, getYouTubeThumbnail, getHostname, filesFromClipboard, isImage, isMedia } from '@/core/utils'
 import { api } from '@/core/api'
 import { Modal, Button, Input, Textarea, TagInput } from '../ui'
 import { SpacePicker } from '../spaces'
@@ -65,6 +65,8 @@ export function CreateCardModal() {
   const [spaceIds, setSpaceIds] = useState<string[]>(
     activeSpaceId && activeSpaceId !== DEFAULT_SPACE_ID ? [activeSpaceId] : []
   )
+  const [author, setAuthor] = useState('')
+  const [sourceUrl, setSourceUrl] = useState('')
   const [staged, setStaged] = useState<StagedMedia[]>([])
   const [groupMode, setGroupMode] = useState<GroupMode>('file')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -140,6 +142,8 @@ export function CreateCardModal() {
     setUrl('')
     setCaption('')
     setTags([])
+    setAuthor('')
+    setSourceUrl('')
     setSpaceIds(activeSpaceId && activeSpaceId !== DEFAULT_SPACE_ID ? [activeSpaceId] : [])
     staged.forEach((item) => URL.revokeObjectURL(item.preview))
     setStaged([])
@@ -196,6 +200,19 @@ export function CreateCardModal() {
           subnotes: [],
         }
         await createCard(input)
+      } else if (cardType === 'highlight') {
+        input = {
+          type: 'highlight',
+          spaceIds,
+          title: title || undefined,
+          text: content,
+          author: author.trim() || undefined,
+          sourceUrl: sourceUrl.trim() || undefined,
+          siteName: sourceUrl.trim() ? getHostname(sourceUrl.trim()) : undefined,
+          tags,
+          subnotes: [],
+        }
+        await createCard(input)
       } else if (isMediaType && staged.length > 0) {
         await createCards(await buildMediaCards(), (done, total) => setProgress({ done, total }))
       } else if (cardType === 'link') {
@@ -241,6 +258,7 @@ export function CreateCardModal() {
     if (cardType === 'note') return content.trim().length > 0
     if (isMediaType) return staged.length > 0
     if (cardType === 'link') return url.trim().length > 0
+    if (cardType === 'highlight') return content.trim().length > 0
     return false
   }
 
@@ -249,9 +267,10 @@ export function CreateCardModal() {
     image: '🖼️',
     video: '🎬',
     link: '🔗',
+    highlight: '❝',
   }
 
-  const cardTypes: CardType[] = ['note', 'image', 'video', 'link']
+  const cardTypes: CardType[] = ['note', 'highlight', 'image', 'video', 'link']
 
   return (
     <Modal open={isOpen} onOpenChange={handleClose} title="New card">
@@ -283,6 +302,29 @@ export function CreateCardModal() {
               onChange={(e) => setContent(e.target.value)}
               rows={8}
             />
+          )}
+
+          {cardType === 'highlight' && (
+            <>
+              <Textarea
+                placeholder="Paste the quote…"
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                rows={6}
+              />
+              <div className="grid grid-cols-2 gap-2">
+                <Input
+                  placeholder="Author (optional)"
+                  value={author}
+                  onChange={(e) => setAuthor(e.target.value)}
+                />
+                <Input
+                  placeholder="Source URL (optional)"
+                  value={sourceUrl}
+                  onChange={(e) => setSourceUrl(e.target.value)}
+                />
+              </div>
+            </>
           )}
 
           {isMediaType && (

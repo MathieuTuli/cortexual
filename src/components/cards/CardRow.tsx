@@ -11,6 +11,7 @@ const TYPE_GLYPH: Record<Card['type'], string> = {
   image: '🖼️',
   video: '🎬',
   link: '🔗',
+  highlight: '❝',
 }
 
 function RowThumbnail({ card }: { card: Card }) {
@@ -83,6 +84,15 @@ function rowSummary(card: Exclude<Card, LinkCard>): { title: string; subtitle: s
   if (card.type === 'note') {
     const firstLine = card.content.trim().split('\n')[0]
     return { title: card.title || firstLine || 'Empty note', subtitle: card.title ? firstLine : '', untitled: !(card.title || firstLine) }
+  }
+  if (card.type === 'highlight') {
+    const quote = card.text.trim().split('\n')[0]
+    const attribution = [card.author, card.siteName].filter(Boolean).join(' · ')
+    return {
+      title: quote || card.title || 'Empty highlight',
+      subtitle: attribution,
+      untitled: !quote,
+    }
   }
   const named = card.title || card.caption
   return {

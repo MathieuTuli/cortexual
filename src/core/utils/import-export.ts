@@ -1,5 +1,5 @@
 import { api } from '../api'
-import type { Card, ImageCard, VideoCard, NoteCard, LinkCard, EmbedType, Space } from '../types'
+import type { Card, ImageCard, VideoCard, NoteCard, LinkCard, HighlightCard, EmbedType, Space } from '../types'
 import { DEFAULT_SPACE_ID, DEFAULT_SPACE } from '../types'
 import { generateId } from './id'
 import { parseCsv, generateCsv, parseTags, stringifyTags, type CsvCard } from './csv'
@@ -280,6 +280,21 @@ export async function importFromDirectory(
           cardsWithMedia.push({ cardId: csvCard.id, file: mediaFile })
         }
       }
+    } else if (csvCard.type === 'Highlight') {
+      card = {
+        id: csvCard.id,
+        type: 'highlight',
+        spaceIds,
+        ...provenance,
+        title: csvCard.title || undefined,
+        text: csvCard.content,
+        note: csvCard.note || undefined,
+        tags,
+        subnotes: [],
+        createdAt: cardNow,
+        updatedAt: cardNow,
+        deletedAt: null,
+      } as HighlightCard
     } else if (csvCard.type === 'Link' || csvCard.url) {
       // Detect embed type from URL
       const parsed = csvCard.url ? parseUrl(csvCard.url) : { embedType: 'generic' as EmbedType }
@@ -398,8 +413,16 @@ export async function exportToFolder(): Promise<{ csv: Blob; mediaFiles: { name:
       type: card.type.charAt(0).toUpperCase() + card.type.slice(1), // Capitalize
       title: card.title || '',
       url: card.type === 'link' ? (card as LinkCard).url : '',
-      content: card.type === 'note' ? (card as NoteCard).content : '',
-      note: (card.type === 'image' || card.type === 'video') ? ((card as ImageCard | VideoCard).caption || '') : '',
+      content:
+        card.type === 'note' ? (card as NoteCard).content
+        : card.type === 'highlight' ? (card as HighlightCard).text
+        : '',
+      note:
+        card.type === 'image' || card.type === 'video'
+          ? (card as ImageCard | VideoCard).caption || ''
+          : card.type === 'highlight'
+            ? (card as HighlightCard).note || ''
+            : '',
       author: card.author || '',
       sourceUrl: card.sourceUrl || '',
       siteName: card.siteName || '',

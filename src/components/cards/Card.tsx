@@ -4,6 +4,7 @@ import { useSpacesStore } from '@/core/stores'
 import { CardNote } from './CardNote'
 import { CardMedia } from './CardMedia'
 import { CardLink } from './CardLink'
+import { CardHighlight } from './CardHighlight'
 import { useCardActions } from './use-card-actions'
 import { timeAgo } from '@/core/utils'
 import { clsx } from 'clsx'
@@ -17,6 +18,7 @@ const TYPE_PILL: Record<string, { label: string; tone: 'dark' | 'light' }> = {
   image: { label: 'IMAGE', tone: 'dark' },
   video: { label: 'VIDEO', tone: 'dark' },
   link: { label: 'LINK', tone: 'dark' },
+  highlight: { label: 'HIGHLIGHT', tone: 'light' },
 }
 
 function TypePill({ type, extra }: { type: CardType['type']; extra?: string }) {
@@ -82,18 +84,19 @@ export function Card({ card }: CardProps) {
         )}
 
         <div className={clsx('px-3.5', isMediaTop ? 'pt-3 pb-3' : 'pt-3.5 pb-3')}>
-          {!isMediaTop && card.type === 'note' && (
+          {!isMediaTop && (
             <div className="flex items-start justify-between mb-2 gap-2">
               {card.title && (
                 <h3 className="text-xs font-semibold text-text-muted uppercase tracking-wider truncate">
                   {card.title}
                 </h3>
               )}
-              <div className="ml-auto"><TypePill type="note" /></div>
+              <div className="ml-auto"><TypePill type={card.type} /></div>
             </div>
           )}
 
-          {!isMediaTop && card.type === 'note' && <CardNote card={card} />}
+          {card.type === 'note' && <CardNote card={card} />}
+          {card.type === 'highlight' && <CardHighlight card={card} />}
 
           {isMediaTop && (() => {
             const titleText = card.type === 'link' ? (card.title || card.preview?.title) : card.title

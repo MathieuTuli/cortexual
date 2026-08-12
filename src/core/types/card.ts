@@ -8,7 +8,7 @@ export const SubnoteSchema = z.object({
 
 export type Subnote = z.infer<typeof SubnoteSchema>
 
-export const CardTypeEnum = z.enum(['note', 'image', 'video', 'link'])
+export const CardTypeEnum = z.enum(['note', 'image', 'video', 'link', 'highlight'])
 export type CardType = z.infer<typeof CardTypeEnum>
 
 export const CardBaseSchema = z.object({
@@ -68,11 +68,23 @@ export const LinkCardSchema = CardBaseSchema.extend({
   preview: LinkPreviewSchema.optional(),
 })
 
+/**
+ * Something someone else wrote, quoted verbatim. Distinct from a note: `text`
+ * is not yours to rewrite, and the provenance on the base is the point of it.
+ * `note` holds your own commentary alongside the quote.
+ */
+export const HighlightCardSchema = CardBaseSchema.extend({
+  type: z.literal('highlight'),
+  text: z.string(),
+  note: z.string().optional(),
+})
+
 export const CardSchema = z.discriminatedUnion('type', [
   NoteCardSchema,
   ImageCardSchema,
   VideoCardSchema,
   LinkCardSchema,
+  HighlightCardSchema,
 ])
 
 export type CardBase = z.infer<typeof CardBaseSchema>
@@ -80,6 +92,7 @@ export type NoteCard = z.infer<typeof NoteCardSchema>
 export type ImageCard = z.infer<typeof ImageCardSchema>
 export type VideoCard = z.infer<typeof VideoCardSchema>
 export type LinkCard = z.infer<typeof LinkCardSchema>
+export type HighlightCard = z.infer<typeof HighlightCardSchema>
 export type Card = z.infer<typeof CardSchema>
 export type LinkPreview = z.infer<typeof LinkPreviewSchema>
 
@@ -87,6 +100,12 @@ export type CreateNoteCardInput = Omit<NoteCard, 'id' | 'createdAt' | 'updatedAt
 export type CreateImageCardInput = Omit<ImageCard, 'id' | 'createdAt' | 'updatedAt' | 'deletedAt'>
 export type CreateVideoCardInput = Omit<VideoCard, 'id' | 'createdAt' | 'updatedAt' | 'deletedAt'>
 export type CreateLinkCardInput = Omit<LinkCard, 'id' | 'createdAt' | 'updatedAt' | 'deletedAt'>
-export type CreateCardInput = CreateNoteCardInput | CreateImageCardInput | CreateVideoCardInput | CreateLinkCardInput
+export type CreateHighlightCardInput = Omit<HighlightCard, 'id' | 'createdAt' | 'updatedAt' | 'deletedAt'>
+export type CreateCardInput =
+  | CreateNoteCardInput
+  | CreateImageCardInput
+  | CreateVideoCardInput
+  | CreateLinkCardInput
+  | CreateHighlightCardInput
 
 export type UpdateCardInput = Partial<Omit<Card, 'id' | 'createdAt' | 'type'>>

@@ -70,7 +70,9 @@ export function EditCardModal() {
   useEffect(() => {
     if (card) {
       setTitle(card.title || '')
-      setContent('content' in card ? (card.content as string) : '')
+      setContent(
+        card.type === 'highlight' ? card.text : 'content' in card ? (card.content as string) : ''
+      )
       setCaption('caption' in card ? (card.caption as string) || '' : '')
       setTags([...card.tags])
       setSpaceIds([...card.spaceIds])
@@ -157,6 +159,9 @@ export function EditCardModal() {
       if (card.type === 'note') {
         (updates as Partial<Card> & { content: string }).content = content
       }
+      if (card.type === 'highlight') {
+        (updates as Partial<Card> & { text: string }).text = content
+      }
       if (card.type === 'image' || card.type === 'video') {
         (updates as Partial<Card> & { caption?: string }).caption = caption || undefined
       }
@@ -199,6 +204,15 @@ export function EditCardModal() {
           value={title}
           onChange={(e) => setTitle(e.target.value)}
         />
+
+        {card.type === 'highlight' && (
+          <Textarea
+            placeholder="The quote…"
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            rows={6}
+          />
+        )}
 
         {card.type === 'note' && (
           <Textarea

@@ -100,6 +100,19 @@ export function CardViewModal() {
             </div>
           )}
 
+          {card.type === 'highlight' && (
+            <div className="space-y-3">
+              <blockquote className="border-l-2 border-[var(--color-border-bold)] pl-4 whitespace-pre-wrap text-text leading-relaxed">
+                {card.text}
+              </blockquote>
+              {card.note && (
+                <p className="whitespace-pre-wrap text-sm text-text-muted leading-relaxed">
+                  {card.note}
+                </p>
+              )}
+            </div>
+          )}
+
           {card.type === 'image' && (
             <div className="space-y-3">
               {/* Main Image with Navigation */}
