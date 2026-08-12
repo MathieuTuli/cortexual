@@ -16,6 +16,27 @@ chrome.runtime.onInstalled.addListener(() => {
   })
 })
 
+/**
+ * Ask the page first, fall back to the server.
+ *
+ * The DOM is the only place Instagram's media exists for us — it serves a bare
+ * JS shell to any fetch from the daemon. X is the other way round: its
+ * syndication endpoint gives full-resolution originals and every carousel
+ * image, where the DOM only holds the sizes the timeline chose to render.
+ */
+async function findMedia(tab, url) {
+  const isX = /(^|.)(x|twitter).com$/.test(new URL(url).hostname)
+
+  if (!isX && tab?.id != null) {
+    const fromPage = await chrome.tabs
+      .sendMessage(tab.id, { type: 'cortexual:collect-media' })
+      .catch(() => null)
+    if (fromPage?.media?.length) return fromPage
+  }
+
+  return getPostMedia(url)
+}
+
 /** Badge doubles as the only feedback available from a context menu. */
 async function flash(ok, tabId) {
   await chrome.action.setBadgeText({ text: ok ? '✓' : '!' })
@@ -38,7 +59,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
       })
     } else if (info.menuItemId === MENU.media) {
       const url = info.linkUrl || info.pageUrl || tab?.url
-      const found = await getPostMedia(url)
+      const found = await findMedia(tab, url)
       if (!found.media?.length) throw new Error('no media found in that post')
       await savePostMedia({ url, title: tab?.title, found, mode: 'single' })
     } else if (info.menuItemId === MENU.page) {

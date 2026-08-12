@@ -110,3 +110,74 @@ document.addEventListener('scroll', removeBubble, { passive: true })
 chrome.runtime.onMessage.addListener((message) => {
   if (message?.type === 'cortexual:toast') showToast(message.ok)
 })
+
+/**
+ * Media as the page actually rendered it.
+ *
+ * Instagram serves an empty JS shell to any server-side fetch — no og tags, no
+ * CDN urls, nothing — so scraping it from the daemon returns zero. In here the
+ * post is a real DOM, on your session, already loaded. That's the difference,
+ * and it's why this lives in the content script rather than the server.
+ */
+function collectPageMedia() {
+  const post =
+    document.querySelector('article[role="presentation"]') ||
+    document.querySelector('article') ||
+    document.body
+
+  const media = []
+  const seen = new Set()
+
+  const push = (url, kind) => {
+    if (!url || seen.has(url)) return
+    // Avatars, emoji and UI chrome all live in the same DOM.
+    if (/\/(rsrc\.php|static\.cdninstagram\.com\/rsrc)/.test(url)) return
+    seen.add(url)
+    media.push({ url, kind })
+  }
+
+  /** srcset's widest candidate, so a carousel isn't saved at thumbnail size. */
+  const widest = (img) => {
+    if (!img.srcset) return img.currentSrc || img.src
+    return (
+      img.srcset
+        .split(',')
+        .map((part) => {
+          const [url, size] = part.trim().split(/\s+/)
+          return { url, width: parseInt(size) || 0 }
+        })
+        .sort((a, b) => b.width - a.width)[0]?.url || img.src
+    )
+  }
+
+  for (const img of post.querySelectorAll('img')) {
+    if (img.naturalWidth && img.naturalWidth < 200) continue
+    push(widest(img), 'image')
+  }
+
+  for (const video of post.querySelectorAll('video')) {
+    push(video.currentSrc || video.src || video.querySelector('source')?.src, 'video')
+  }
+
+  return {
+    source: location.hostname.includes('instagram') ? 'instagram' : 'page',
+    author:
+      document.querySelector('meta[property="og:title"]')?.content ||
+      location.pathname.split('/').filter(Boolean)[0],
+    text: document.querySelector('meta[property="og:description"]')?.content,
+    media,
+    // Instagram only keeps the visible slides mounted, so a carousel yields
+    // what you've scrolled through rather than all of it.
+    partial: media.length > 0 && Boolean(post.querySelector('[aria-label*="Next"]')),
+  }
+}
+
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message?.type !== 'cortexual:collect-media') return
+  try {
+    sendResponse(collectPageMedia())
+  } catch (error) {
+    sendResponse({ media: [], error: error.message })
+  }
+  return true
+})

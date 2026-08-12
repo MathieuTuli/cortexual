@@ -21,7 +21,7 @@ const MOVIE = /\.(mp4|webm|mov|m4v)$/i
 
 const args = process.argv.slice(2)
 const framesArg = args.indexOf('--frames')
-const FRAMES = framesArg >= 0 ? Number(args[framesArg + 1]) : 5
+const FRAMES = framesArg >= 0 ? Number(args[framesArg + 1]) : 10
 
 interface Card {
   id: string
