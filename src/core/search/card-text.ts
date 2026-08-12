@@ -29,6 +29,7 @@ export function cardText(card: Card): string {
       break
   }
 
+  if (card.autoCaption) parts.push(card.autoCaption)
   if (card.author) parts.push(card.author)
   if (card.siteName) parts.push(card.siteName)
   if (card.tags.length) parts.push(card.tags.join(' '))

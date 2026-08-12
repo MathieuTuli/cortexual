@@ -94,7 +94,7 @@ function rowSummary(card: Exclude<Card, LinkCard>): { title: string; subtitle: s
       untitled: !quote,
     }
   }
-  const named = card.title || card.caption
+  const named = card.title || card.caption || card.autoCaption
   return {
     title: named || (card.type === 'image' ? 'Image' : 'Video'),
     subtitle: card.title ? card.caption || '' : '',

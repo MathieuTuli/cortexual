@@ -21,6 +21,12 @@ export const CardBaseSchema = z.object({
   // highlight, a clipped article, an imported bookmark. Empty for cards you
   // wrote yourself.
   author: z.string().optional(),
+  /**
+   * A description generated from the image itself, for cards that arrived with
+   * no title, caption or tags. Kept apart from the user's own fields so a
+   * regenerate can never overwrite something you wrote.
+   */
+  autoCaption: z.string().optional(),
   sourceUrl: z.string().optional(),
   siteName: z.string().optional(),
   tags: z.array(z.string()),
