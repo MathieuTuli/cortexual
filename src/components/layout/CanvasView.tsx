@@ -1,8 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { flushSync } from 'react-dom'
 import type { CardPosition } from '@/core/types'
-import { layoutKeyForSpace, positionFor } from '@/core/types'
-import { useCardsStore, useLayoutStore, useSpacesStore } from '@/core/stores'
+import { CANVAS_GAP, DEFAULT_CARD_WIDTH, positionFor, projectLayoutKey } from '@/core/types'
+import { useCardsStore, useLayoutStore, useProjectsStore } from '@/core/stores'
+import { useMeasuredHeights } from '@/core/hooks'
+import { packToAspect } from '@/core/layout/pack'
 import { Card } from '../cards/Card'
+import { Button, StarButton } from '../ui'
 import { clsx } from 'clsx'
 
 const MIN_ZOOM = 0.15
@@ -11,6 +15,8 @@ const ZOOM_STEP = 1.2
 
 /** Pointer travel before a press counts as a drag rather than a click. */
 const DRAG_THRESHOLD_PX = 4
+
+const PILL = 'h-10 px-4 inline-flex items-center rounded-full bg-chip/85 backdrop-blur-xl text-sm'
 
 interface Viewport {
   x: number
@@ -21,29 +27,32 @@ interface Viewport {
 const clampZoom = (zoom: number) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoom))
 
 /**
- * Full-viewport canvas. Rendered outside the app shell rather than inside the
- * main column — a spatial surface boxed in beside a sidebar and a rail defeats
+ * A project's canvas, full viewport. Rendered outside the app shell rather than
+ * inside the main column — a spatial surface boxed in beside a sidebar defeats
  * the point of it.
  */
-export function CanvasView({ spaceId }: { spaceId: string | null }) {
-  const getSpaceById = useSpacesStore((s) => s.getSpaceById)
-  const getCardsBySpace = useCardsStore((s) => s.getCardsBySpace)
-  // getCardsBySpace reads these off the store, so subscribe for re-renders.
+export function CanvasView({ projectId }: { projectId: string }) {
+  const getProjectById = useProjectsStore((s) => s.getProjectById)
+  const getCardsByProject = useCardsStore((s) => s.getCardsByProject)
+  // The getter reads the card list off the store, so subscribe for re-renders.
   useCardsStore((s) => s.cards)
 
-  const cards = getCardsBySpace(spaceId)
-  const space = spaceId ? getSpaceById(spaceId) : null
+  const cards = getCardsByProject(projectId)
+  const title = getProjectById(projectId)?.name
 
-  const spaceKey = layoutKeyForSpace(spaceId)
+  const layoutId = projectLayoutKey(projectId)
 
   const layouts = useLayoutStore((s) => s.layouts)
   const setPositions = useLayoutStore((s) => s.setPositions)
-  const layout = layouts[spaceKey]
+  const layout = layouts[layoutId]
 
   const containerRef = useRef<HTMLDivElement>(null)
   const [viewport, setViewport] = useState<Viewport>({ x: 0, y: 0, zoom: 1 })
   const [draggingId, setDraggingId] = useState<string | null>(null)
   const [isPanning, setIsPanning] = useState(false)
+
+  const cardIds = useMemo(() => cards.map((c) => c.id), [cards])
+  const { measure, heights, settled } = useMeasuredHeights(cardIds)
 
   // Resolved once per render so drag maths and rendering agree on where a card
   // is, including the ones that have never been placed.
@@ -143,7 +152,7 @@ export function CanvasView({ spaceId }: { spaceId: string | null }) {
 
       // Screen pixels are canvas pixels only at zoom 1.
       const next: CardPosition = { ...start, x: start.x + dx / zoom, y: start.y + dy / zoom }
-      setPositions(spaceKey, { [cardId]: next })
+      setPositions(layoutId, { [cardId]: next })
     }
 
     const onUp = () => {
@@ -166,21 +175,19 @@ export function CanvasView({ spaceId }: { spaceId: string | null }) {
     e.stopPropagation()
   }
 
-  /**
-   * Frame every card. Card heights aren't known ahead of render — they size to
-   * their content — so the extent is estimated from widths and a nominal
-   * height, then padded. Close enough to frame, and the user can nudge.
-   */
+  /** Frame every card, using the heights actually on screen. */
   const fitToContent = useCallback(() => {
     const el = containerRef.current
-    if (!el || placed.length === 0) return
+    const current = posRef.current
+    if (!el || current.length === 0) return
 
-    const NOMINAL_HEIGHT = 320
     const PAD = 60
-    const minX = Math.min(...placed.map((p) => p.pos.x))
-    const minY = Math.min(...placed.map((p) => p.pos.y))
-    const maxX = Math.max(...placed.map((p) => p.pos.x + p.pos.w))
-    const maxY = Math.max(...placed.map((p) => p.pos.y + NOMINAL_HEIGHT))
+    const heightOf = (id: string) => heights.current.get(id) ?? 320
+
+    const minX = Math.min(...current.map((p) => p.pos.x))
+    const minY = Math.min(...current.map((p) => p.pos.y))
+    const maxX = Math.max(...current.map((p) => p.pos.x + p.pos.w))
+    const maxY = Math.max(...current.map((p) => p.pos.y + heightOf(p.card.id)))
 
     const { width, height } = el.getBoundingClientRect()
     const zoom = clampZoom(
@@ -192,7 +199,50 @@ export function CanvasView({ spaceId }: { spaceId: string | null }) {
       x: PAD - minX * zoom + (width - PAD * 2 - (maxX - minX) * zoom) / 2,
       y: PAD - minY * zoom + (height - PAD * 2 - (maxY - minY) * zoom) / 2,
     })
-  }, [placed])
+  }, [heights])
+
+  // Packing changes card widths, which changes their heights, which invalidates
+  // the pack it was measured from. One follow-up pass settles it.
+  const [repackWanted, setRepackWanted] = useState(false)
+
+  const pack = useCallback(() => {
+    const measured = posRef.current.map(({ card }) => ({
+      id: card.id,
+      height: heights.current.get(card.id) ?? 320,
+    }))
+    if (measured.length === 0) return
+    setPositions(
+      layoutId,
+      packToAspect(measured, { width: DEFAULT_CARD_WIDTH, gap: CANVAS_GAP })
+    )
+    setRepackWanted(true)
+  }, [heights, layoutId, setPositions])
+
+  useEffect(() => {
+    if (!repackWanted || !settled) return
+    setRepackWanted(false)
+    const measured = posRef.current.map(({ card }) => ({
+      id: card.id,
+      height: heights.current.get(card.id) ?? 320,
+    }))
+    setPositions(layoutId, packToAspect(measured, { width: DEFAULT_CARD_WIDTH, gap: CANVAS_GAP }))
+    fitToContent()
+  }, [repackWanted, settled, heights, layoutId, setPositions, fitToContent])
+
+  /**
+   * A canvas nobody has arranged gets packed rather than left in the index-order
+   * grid, which is five columns wide and however many hundred rows tall. Only
+   * when the layout is completely empty — packing over someone's arrangement
+   * would throw it away.
+   */
+  const unarranged = Object.keys(layout || {}).length === 0 && cards.length > 0
+  const didAutoPack = useRef(false)
+
+  useEffect(() => {
+    if (didAutoPack.current || !unarranged || !settled) return
+    didAutoPack.current = true
+    pack()
+  }, [unarranged, settled, pack])
 
   const resetView = () => setViewport({ x: 0, y: 0, zoom: 1 })
 
@@ -200,10 +250,23 @@ export function CanvasView({ spaceId }: { spaceId: string | null }) {
   // corner. Runs once — refitting on every card change would fight the user.
   const didFit = useRef(false)
   useEffect(() => {
-    if (didFit.current || placed.length === 0) return
+    if (didFit.current || placed.length === 0 || !settled) return
     didFit.current = true
     fitToContent()
-  }, [placed.length, fitToContent])
+  }, [placed.length, settled, fitToContent])
+
+  /**
+   * Print takes whatever transform is live, so frame first or the sheet gets
+   * whichever corner happened to be on screen. flushSync because beforeprint
+   * fires inside a synchronous window.print(): a normal setState would still be
+   * queued when the snapshot is taken, and the fit would land on screen just
+   * after the PDF was written without it.
+   */
+  useEffect(() => {
+    const onBeforePrint = () => flushSync(() => fitToContent())
+    window.addEventListener('beforeprint', onBeforePrint)
+    return () => window.removeEventListener('beforeprint', onBeforePrint)
+  }, [fitToContent])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -220,8 +283,12 @@ export function CanvasView({ spaceId }: { spaceId: string | null }) {
     return () => window.removeEventListener('keydown', onKey)
   }, [fitToContent])
 
+  // Cards have to be in the document to be measured, but the pre-pack grid is
+  // not something anyone needs to see.
+  const hidden = unarranged && !didAutoPack.current
+
   return (
-    <div className="canvas-surface fixed inset-0 z-40 overflow-hidden bg-[#fbfbfd]">
+    <div className="canvas-surface fixed inset-0 z-40 overflow-hidden bg-bg">
       <div
         ref={containerRef}
         onPointerDown={startPan}
@@ -230,13 +297,13 @@ export function CanvasView({ spaceId }: { spaceId: string | null }) {
           isPanning ? 'cursor-grabbing' : 'cursor-grab'
         )}
         style={{
-          backgroundImage: 'radial-gradient(circle, rgba(15,23,42,0.10) 1px, transparent 1px)',
+          backgroundImage: 'radial-gradient(circle, rgba(0,0,0,0.12) 1px, transparent 1px)',
           backgroundSize: `${24 * viewport.zoom}px ${24 * viewport.zoom}px`,
           backgroundPosition: `${viewport.x}px ${viewport.y}px`,
         }}
       >
         <div
-          className="absolute top-0 left-0 origin-top-left"
+          className={clsx('absolute top-0 left-0 origin-top-left', hidden && 'opacity-0')}
           style={{
             transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.zoom})`,
           }}
@@ -244,6 +311,7 @@ export function CanvasView({ spaceId }: { spaceId: string | null }) {
           {placed.map(({ card, pos }) => (
             <div
               key={card.id}
+              ref={measure(card.id)}
               onPointerDown={(e) => startCardDrag(e, card.id)}
               onClickCapture={swallowClickAfterDrag}
               className={clsx(
@@ -258,37 +326,30 @@ export function CanvasView({ spaceId }: { spaceId: string | null }) {
         </div>
       </div>
 
-      <div className="canvas-chrome absolute top-4 left-4 z-30 flex items-center gap-2">
-        <span className="px-3 h-8 inline-flex items-center rounded-full bg-white/90 backdrop-blur-md border border-white/60 shadow-soft text-xs font-medium text-text">
-          {space?.name || 'All cards'}
-        </span>
-        <span className="px-2.5 h-8 inline-flex items-center rounded-full bg-white/70 backdrop-blur-md border border-white/60 text-[11px] tabular-nums text-text-muted">
+      <div className="canvas-chrome absolute top-5 left-5 z-30 flex items-center gap-2">
+        <span className={clsx(PILL, 'text-text')}>{title || 'Canvas'}</span>
+        <span className={clsx(PILL, 'tabular-nums text-text-faint')}>
           {cards.length} card{cards.length === 1 ? '' : 's'}
         </span>
-        <button
-          onClick={fitToContent}
-          title="Fit everything (⌘1)"
-          className="px-3 h-8 rounded-full bg-white/90 backdrop-blur-md border border-white/60 shadow-soft text-xs font-medium text-text hover:bg-white transition-colors"
-        >
+        <Button size="sm" onClick={pack} title="Re-pack everything to fit a screen">
+          Pack
+        </Button>
+        <Button size="sm" onClick={fitToContent} title="Fit everything (⌘1)">
           Fit
-        </button>
-        <button
-          onClick={() => window.print()}
-          title="Print or save as PDF"
-          className="px-3 h-8 rounded-full bg-[#0f172a] text-white text-xs font-medium hover:bg-[#1e293b] transition-colors shadow-soft"
-        >
+        </Button>
+        <Button size="sm" variant="primary" onClick={() => window.print()} title="Print or save as PDF">
           Save as PDF
-        </button>
+        </Button>
       </div>
 
-      <div className="canvas-chrome absolute bottom-4 right-4 z-30 flex items-center gap-1 p-1 rounded-full bg-white/90 backdrop-blur-md border border-white/60 shadow-soft">
+      <div className="canvas-chrome absolute bottom-5 right-5 z-30 flex items-center gap-1 p-1 rounded-full bg-chip/85 backdrop-blur-xl">
         <ZoomButton label="Zoom out" onClick={() => setViewport((v) => ({ ...v, zoom: clampZoom(v.zoom / ZOOM_STEP) }))}>
           <path d="M5 12h14" />
         </ZoomButton>
         <button
           onClick={resetView}
           title="Reset view"
-          className="px-2 h-7 text-[11px] tabular-nums text-text-muted hover:text-text transition-colors"
+          className="px-2.5 h-8 text-xs tabular-nums text-text-muted hover:text-text transition-colors"
         >
           {Math.round(viewport.zoom * 100)}%
         </button>
@@ -310,15 +371,17 @@ function ZoomButton({
   children: React.ReactNode
 }) {
   return (
-    <button
+    <StarButton
+      size="w-9 h-9"
       onClick={onClick}
       title={label}
       aria-label={label}
-      className="w-7 h-7 rounded-full flex items-center justify-center text-text-muted hover:text-text hover:bg-white transition-colors"
+      className="text-text-muted hover:text-text"
+      style={{ '--star-bg': 'transparent', '--star-bg-hover': 'var(--bg)' } as React.CSSProperties}
     >
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
         {children}
       </svg>
-    </button>
+    </StarButton>
   )
 }

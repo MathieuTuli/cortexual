@@ -2,13 +2,10 @@ import { useState } from 'react'
 import type { Space } from '@/core/types'
 import { cardIsInSpace } from '@/core/types'
 import { useSpacesStore, useCardsStore } from '@/core/stores'
+import { go } from '@/core/router'
 import { clsx } from 'clsx'
-import { ContextMenu, useContextMenu, type ContextMenuItem, Modal, Input, Button } from '../ui'
-
-const PRESET_COLORS = [
-  '#0f172a', '#4c6fff', '#22c55e', '#eab308', '#f97316',
-  '#ef4444', '#a855f7', '#ec4899', '#14b8a6',
-]
+import { ContextMenu, useContextMenu, type ContextMenuItem, Modal, Input, Button, NavRow } from '../ui'
+import { SPACE_COLORS } from '@/core/palette'
 
 interface SpaceItemProps {
   space: Space
@@ -16,7 +13,6 @@ interface SpaceItemProps {
 
 export function SpaceItem({ space }: SpaceItemProps) {
   const activeSpaceId = useSpacesStore((s) => s.activeSpaceId)
-  const setActiveSpace = useSpacesStore((s) => s.setActiveSpace)
   const updateSpace = useSpacesStore((s) => s.updateSpace)
   const deleteSpace = useSpacesStore((s) => s.deleteSpace)
   const cards = useCardsStore((s) => s.cards)
@@ -50,11 +46,9 @@ export function SpaceItem({ space }: SpaceItemProps) {
         icon: '🗑️',
         danger: true,
         onClick: () => {
-          if (confirm(`Delete "${space.name}" and all ${cardCount} cards in it?`)) {
+          if (confirm(`Delete "${space.name}"? Its ${cardCount} cards stay in your library.`)) {
             deleteSpace(space.id)
-            if (activeSpaceId === space.id) {
-              setActiveSpace(null)
-            }
+            if (activeSpaceId === space.id) go({ name: 'library', spaceId: null })
           }
         },
       },
@@ -73,25 +67,13 @@ export function SpaceItem({ space }: SpaceItemProps) {
 
   return (
     <>
-      <button
-        className={clsx(
-          'w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-sm transition-colors',
-          isActive
-            ? 'bg-white/70 backdrop-blur-sm text-text font-medium shadow-soft'
-            : 'text-text-muted hover:bg-white/50 hover:text-text'
-        )}
-        onClick={() => setActiveSpace(space.id)}
+      <NavRow
+        label={space.name}
+        trailing={cardCount}
+        active={isActive}
+        onClick={() => go({ name: 'library', spaceId: space.id })}
         onContextMenu={handleContextMenu}
-      >
-        <span
-          className="w-2 h-2 rounded-full flex-shrink-0"
-          style={{ backgroundColor: space.color || '#94a3b8' }}
-        />
-        <span className="flex-1 truncate text-left">{space.name}</span>
-        <span className="text-[11px] tabular-nums text-text-muted">
-          {cardCount}
-        </span>
-      </button>
+      />
 
       {contextMenu && (
         <ContextMenu
@@ -119,15 +101,15 @@ export function SpaceItem({ space }: SpaceItemProps) {
             />
           </div>
           <div>
-            <p className="section-label mb-2">Color</p>
-            <div className="flex gap-1.5 flex-wrap">
-              {PRESET_COLORS.map((c) => (
+            <p className="section-label mb-2.5">Color</p>
+            <div className="flex gap-2 flex-wrap">
+              {SPACE_COLORS.map((c) => (
                 <button
                   key={c}
                   type="button"
                   className={clsx(
                     'w-7 h-7 rounded-full transition-transform',
-                    editColor === c ? 'ring-2 ring-offset-2 ring-text scale-110' : 'hover:scale-110'
+                    editColor === c ? 'ring-2 ring-offset-2 ring-accent scale-110' : 'hover:scale-110'
                   )}
                   style={{ backgroundColor: c }}
                   onClick={() => setEditColor(editColor === c ? null : c)}

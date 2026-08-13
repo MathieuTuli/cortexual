@@ -33,11 +33,11 @@ export function CardMedia({ card }: CardMediaProps) {
     const src = mediaUrls[0] || card.thumbnailDataUrl
 
     if (!src && !loadError) {
-      return <div className="aspect-video bg-[#f3f4f6] animate-pulse" />
+      return <div className="aspect-video bg-chip animate-pulse" />
     }
     if (!src && loadError) {
       return (
-        <div className="aspect-video bg-[#f3f4f6] flex items-center justify-center text-text-muted text-xs">
+        <div className="aspect-video bg-chip flex items-center justify-center text-text-muted text-xs">
           [video unavailable]
         </div>
       )
@@ -59,8 +59,8 @@ export function CardMedia({ card }: CardMediaProps) {
           />
         )}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="w-10 h-10 rounded-full bg-white/90 flex items-center justify-center shadow-lg">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="text-[#0f172a] ml-0.5">
+          <div className="w-10 h-10 rounded-full bg-bg/90 flex items-center justify-center shadow-float">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="text-text ml-0.5">
               <path d="M6 4l14 8L6 20V4z" />
             </svg>
           </div>
@@ -73,11 +73,11 @@ export function CardMedia({ card }: CardMediaProps) {
   const sources = mediaUrls.length > 0 ? mediaUrls : thumbnails
 
   if (sources.length === 0 && !loadError) {
-    return <div className="aspect-video bg-[#f3f4f6] animate-pulse" />
+    return <div className="aspect-video bg-chip animate-pulse" />
   }
   if (sources.length === 0 && loadError) {
     return (
-      <div className="aspect-video bg-[#f3f4f6] flex items-center justify-center text-text-muted text-xs">
+      <div className="aspect-video bg-chip flex items-center justify-center text-text-muted text-xs">
         [image unavailable]
       </div>
     )
@@ -92,36 +92,49 @@ export function CardMedia({ card }: CardMediaProps) {
     setIndex((i) => (Math.min(i, sources.length - 1) + delta + sources.length) % sources.length)
   }
 
+  if (sources.length === 1) {
+    return (
+      <div className="relative group/media">
+        <img src={sources[0]} alt={card.caption || 'Image'} className="w-full object-cover" />
+      </div>
+    )
+  }
+
+  /*
+   * Photos in a set rarely share an aspect ratio, so letting each one size the
+   * tile made the whole masonry column jump every time you paged through. The
+   * first image stays in the flow to fix the height — it is the one the layout
+   * settled on — and every image, including that first one, is then drawn inside
+   * that box. Contained rather than cropped: a set is usually a set because the
+   * whole frame matters.
+   */
   return (
-    <div className="relative group/media">
+    <div className="relative group/media min-h-28 bg-sunken">
+      <img src={sources[0]} alt="" aria-hidden className="w-full invisible" />
       <img
         src={sources[current]}
         alt={card.caption || 'Image'}
-        className="w-full object-cover"
+        className="absolute inset-0 w-full h-full object-contain"
       />
-      {sources.length > 1 && (
-        <>
-          <button
-            type="button"
-            onClick={(e) => step(e, -1)}
-            aria-label="Previous image"
-            className="absolute left-1.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-[#0f172a]/60 hover:bg-[#0f172a]/85 text-white text-base leading-none flex items-center justify-center backdrop-blur-sm opacity-0 group-hover/media:opacity-100 transition-opacity"
-          >
-            ‹
-          </button>
-          <button
-            type="button"
-            onClick={(e) => step(e, 1)}
-            aria-label="Next image"
-            className="absolute right-1.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-[#0f172a]/60 hover:bg-[#0f172a]/85 text-white text-base leading-none flex items-center justify-center backdrop-blur-sm opacity-0 group-hover/media:opacity-100 transition-opacity"
-          >
-            ›
-          </button>
-          <div className="absolute bottom-2 right-2 bg-[#0f172a]/70 text-white text-[10px] font-medium tabular-nums px-2 py-0.5 rounded-full backdrop-blur-sm">
-            {current + 1}/{sources.length}
-          </div>
-        </>
-      )}
+      <button
+        type="button"
+        onClick={(e) => step(e, -1)}
+        aria-label="Previous image"
+        className="absolute left-1.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-black/45 hover:bg-black/70 text-white text-base leading-none flex items-center justify-center backdrop-blur-sm opacity-0 group-hover/media:opacity-100 transition-opacity"
+      >
+        ‹
+      </button>
+      <button
+        type="button"
+        onClick={(e) => step(e, 1)}
+        aria-label="Next image"
+        className="absolute right-1.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-black/45 hover:bg-black/70 text-white text-base leading-none flex items-center justify-center backdrop-blur-sm opacity-0 group-hover/media:opacity-100 transition-opacity"
+      >
+        ›
+      </button>
+      <div className="absolute bottom-2 right-2 bg-black/55 text-white text-[10px] font-medium tabular-nums px-2 py-0.5 rounded-full backdrop-blur-sm">
+        {current + 1}/{sources.length}
+      </div>
     </div>
   )
 }

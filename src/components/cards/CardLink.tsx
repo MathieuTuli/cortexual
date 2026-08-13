@@ -33,14 +33,10 @@ export function CardLink({ card }: CardLinkProps) {
   }
 
   return (
-    <div className="aspect-video bg-gradient-to-br from-[#0f172a] to-[#1e293b] flex items-end p-3">
+    <div className="aspect-video bg-sunken flex items-end p-4">
       <div>
-        <p className="text-[10px] uppercase tracking-wider text-white/60 font-semibold mb-1">
-          {subtitle || hostname}
-        </p>
-        <p className="text-sm text-white font-medium leading-snug line-clamp-2">
-          {title}
-        </p>
+        <p className="text-xs text-text-faint mb-1.5">{subtitle || hostname}</p>
+        <p className="text-base text-text leading-snug line-clamp-2">{title}</p>
       </div>
     </div>
   )

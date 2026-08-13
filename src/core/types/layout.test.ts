@@ -1,21 +1,20 @@
 import { describe, it, expect } from 'vitest'
 import {
-  ALL_CARDS_LAYOUT_KEY,
   CardPositionSchema,
   DEFAULT_CARD_WIDTH,
   fallbackPosition,
-  layoutKeyForSpace,
   positionFor,
-  type SpaceLayout,
+  projectLayoutKey,
+  type CanvasLayout,
 } from './layout'
 
-describe('layoutKeyForSpace', () => {
-  it('uses the space id for a real space', () => {
-    expect(layoutKeyForSpace('abc')).toBe('abc')
+describe('projectLayoutKey', () => {
+  it('namespaces the project id', () => {
+    expect(projectLayoutKey('abc')).toBe('project:abc')
   })
 
-  it('falls back to the all-cards key when no space is active', () => {
-    expect(layoutKeyForSpace(null)).toBe(ALL_CARDS_LAYOUT_KEY)
+  it('keeps two projects apart', () => {
+    expect(projectLayoutKey('a')).not.toBe(projectLayoutKey('b'))
   })
 })
 
@@ -42,7 +41,7 @@ describe('fallbackPosition', () => {
 })
 
 describe('positionFor', () => {
-  const layout: SpaceLayout = { moved: { x: 120, y: 340, w: 300 } }
+  const layout: CanvasLayout = { moved: { x: 120, y: 340, w: 300 } }
 
   it('prefers a stored position', () => {
     expect(positionFor(layout, 'moved', 7)).toEqual({ x: 120, y: 340, w: 300 })

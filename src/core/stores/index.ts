@@ -1,5 +1,6 @@
 export * from './app-store'
 export * from './cards-store'
 export * from './spaces-store'
+export * from './projects-store'
 export * from './layout-store'
 export * from './search-store'

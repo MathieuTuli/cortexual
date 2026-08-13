@@ -24,11 +24,11 @@ export function MasonryGrid({ cards }: MasonryGridProps) {
   return (
     <Masonry
       breakpointCols={breakpointColumns}
-      className="flex -ml-3 w-auto"
-      columnClassName="pl-3 bg-clip-padding"
+      className="flex -ml-6 w-auto"
+      columnClassName="pl-6 bg-clip-padding"
     >
       {cards.map((card) => (
-        <div key={card.id} className="mb-3 min-w-0">
+        <div key={card.id} className="mb-6 min-w-0">
           <Card card={card} />
         </div>
       ))}

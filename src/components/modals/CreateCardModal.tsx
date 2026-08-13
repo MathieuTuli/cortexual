@@ -7,6 +7,7 @@ import { parseUrl, getYouTubeThumbnail, getHostname, filesFromClipboard, isImage
 import { api } from '@/core/api'
 import { Modal, Button, Input, Textarea, TagInput } from '../ui'
 import { SpacePicker } from '../spaces'
+import { ProjectPicker } from '../projects'
 import { useDropzone } from 'react-dropzone'
 import { clsx } from 'clsx'
 
@@ -65,6 +66,14 @@ export function CreateCardModal() {
   const [spaceIds, setSpaceIds] = useState<string[]>(
     activeSpaceId && activeSpaceId !== DEFAULT_SPACE_ID ? [activeSpaceId] : []
   )
+  // Capturing from inside a project files the card into it by default; that is
+  // almost always why you are capturing while looking at one.
+  /*
+   * Spaces are seeded from where you are, projects deliberately are not. Nothing
+   * clears activeProjectId when you leave Projects, so a project visited earlier
+   * would silently attach itself to everything captured afterwards.
+   */
+  const [projectIds, setProjectIds] = useState<string[]>([])
   const [author, setAuthor] = useState('')
   const [sourceUrl, setSourceUrl] = useState('')
   const [staged, setStaged] = useState<StagedMedia[]>([])
@@ -149,6 +158,7 @@ export function CreateCardModal() {
     setAuthor('')
     setSourceUrl('')
     setSpaceIds(activeSpaceId && activeSpaceId !== DEFAULT_SPACE_ID ? [activeSpaceId] : [])
+    setProjectIds([])
     staged.forEach((item) => URL.revokeObjectURL(item.preview))
     setStaged([])
     setGroupMode('file')
@@ -164,7 +174,7 @@ export function CreateCardModal() {
   // Images become cards at whatever granularity groupMode asks for; a video
   // card holds one file, so videos are always one apiece.
   const buildMediaCards = async (): Promise<NewCard[]> => {
-    const shared = { spaceIds, title: title || undefined, caption: caption || undefined, tags, subnotes: [] }
+    const shared = { spaceIds, projectIds, title: title || undefined, caption: caption || undefined, tags, subnotes: [] }
     const thumbnails = new Map<File, string>()
     for (const { file } of stagedImages) {
       thumbnails.set(file, await generateThumbnail(file))
@@ -224,6 +234,7 @@ export function CreateCardModal() {
     return {
       type: 'link',
       spaceIds,
+      projectIds,
       // A shared title across a batch would label every card the same.
       title: single ? title || undefined : undefined,
       url: one,
@@ -252,6 +263,7 @@ export function CreateCardModal() {
         input = {
           type: 'note',
           spaceIds,
+          projectIds,
           title: title || undefined,
           content,
           tags,
@@ -262,6 +274,7 @@ export function CreateCardModal() {
         input = {
           type: 'highlight',
           spaceIds,
+          projectIds,
           title: title || undefined,
           text: content,
           author: author.trim() || undefined,
@@ -316,16 +329,16 @@ export function CreateCardModal() {
   return (
     <Modal open={isOpen} onOpenChange={handleClose} title="New card">
       <div className="min-h-[200px]">
-        <div className="inline-flex p-1 mb-4 bg-[#f3f4f6] rounded-full">
+        <div className="inline-flex p-1 mb-4 bg-chip rounded-full">
           {cardTypes.map((type) => (
             <button
               key={type}
               type="button"
               onClick={() => setCardType(type)}
               className={clsx(
-                'px-3.5 py-1.5 text-xs font-medium rounded-full transition-colors',
+                'h-8 px-4 text-[13px] font-medium rounded-full transition-colors',
                 cardType === type
-                  ? 'bg-white text-text shadow-soft'
+                  ? 'bg-accent text-white'
                   : 'text-text-muted hover:text-text'
               )}
             >
@@ -373,11 +386,11 @@ export function CreateCardModal() {
               <div
                 {...getRootProps()}
                 className={clsx(
-                  'rounded-xl p-8 text-center cursor-pointer transition-all',
-                  'bg-[#f9fafb] border-2 border-dashed',
+                  'rounded-xl p-10 text-center cursor-pointer transition-colors',
+                  'bg-chip border-2 border-dashed',
                   isDragActive
-                    ? 'border-accent-primary bg-[#eef2ff]'
-                    : 'border-[var(--color-border-bold)] hover:border-accent-primary'
+                    ? 'border-accent bg-accent-soft'
+                    : 'border-sunken hover:border-accent'
                 )}
               >
                 <input {...getInputProps()} />
@@ -399,7 +412,7 @@ export function CreateCardModal() {
                       {cardCount === 1 ? '' : 's'}
                     </p>
                     {stagedImages.length > 1 && (
-                      <div className="inline-flex p-0.5 bg-[#f3f4f6] rounded-full">
+                      <div className="inline-flex p-0.5 bg-chip rounded-full">
                         {GROUP_MODES.map(({ mode, label, hint }) => (
                           <button
                             key={mode}
@@ -407,9 +420,9 @@ export function CreateCardModal() {
                             title={hint}
                             onClick={() => setGroupMode(mode)}
                             className={clsx(
-                              'px-2.5 py-1 text-[11px] font-medium rounded-full transition-colors',
+                              'h-7 px-3 text-xs font-medium rounded-full transition-colors',
                               groupMode === mode
-                                ? 'bg-white text-text shadow-soft'
+                                ? 'bg-accent text-white'
                                 : 'text-text-muted hover:text-text'
                             )}
                           >
@@ -463,16 +476,16 @@ export function CreateCardModal() {
                 rows={urlList.length > 1 ? 5 : 2}
               />
               {url && (
-                <div className="px-3.5 py-2 rounded-lg bg-[#f9fafb] border border-[var(--color-border)]">
+                <div className="px-4 py-2.5 rounded-md bg-chip">
                   <p className="text-xs text-text-muted">
                     {urlList.length > 1 ? (
                       <>
-                        <span className="font-medium text-accent-primary">{urlList.length} links</span>
+                        <span className="font-medium text-accent">{urlList.length} links</span>
                         {' — one card each, fetched in turn'}
                       </>
                     ) : (
                       <>
-                        Detected: <span className="font-medium text-accent-primary">{parseUrl(urlList[0] || '').embedType}</span>
+                        Detected: <span className="font-medium text-accent">{parseUrl(urlList[0] || '').embedType}</span>
                       </>
                     )}
                   </p>
@@ -482,7 +495,7 @@ export function CreateCardModal() {
           )}
         </div>
 
-        <div className="space-y-4 mt-6 pt-4 border-t border-[var(--color-border)]">
+        <div className="space-y-4 mt-6 pt-4 border-t border-chip">
           <Input
             placeholder="Title (optional)"
             value={title}
@@ -498,6 +511,8 @@ export function CreateCardModal() {
           />
 
           <SpacePicker value={spaceIds} onChange={setSpaceIds} />
+
+          <ProjectPicker value={projectIds} onChange={setProjectIds} />
         </div>
 
         <div className="flex justify-end gap-2 mt-6">
@@ -533,18 +548,18 @@ function StagedGrid({ items, onRemove }: StagedGridProps) {
             <img
               src={preview}
               alt={file.name}
-              className="w-full h-20 object-cover rounded-lg border border-[var(--color-border)]"
+              className="w-full h-20 object-cover rounded-md"
             />
           ) : (
             <video
               src={preview}
-              className="w-full h-20 object-cover rounded-lg border border-[var(--color-border)] bg-black"
+              className="w-full h-20 object-cover rounded-md bg-black"
             />
           )}
           <button
             type="button"
             onClick={() => onRemove(preview)}
-            className="absolute top-1 right-1 w-5 h-5 bg-[#0f172a]/80 text-white rounded-full text-xs opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+            className="absolute top-1 right-1 w-5 h-5 bg-black/60 text-white rounded-full text-xs opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
           >
             ×
           </button>
@@ -556,8 +571,8 @@ function StagedGrid({ items, onRemove }: StagedGridProps) {
 
 function StagedGroup({ label, items, onRemove }: StagedGridProps & { label: string }) {
   return (
-    <div className="rounded-xl border border-[var(--color-border)] p-2">
-      <p className="text-[10px] uppercase tracking-wider text-text-muted mb-1.5 px-0.5">{label}</p>
+    <div className="rounded-lg bg-chip p-2.5">
+      <p className="section-label mb-2 px-0.5">{label}</p>
       <StagedGrid items={items} onRemove={onRemove} />
     </div>
   )

@@ -8,6 +8,7 @@ import {
   EMBEDDINGS_FILE,
   LAYOUTS_FILE,
   MEDIA_DIR,
+  PROJECTS_FILE,
   SPACES_FILE,
   ensureStore,
   readJson,
@@ -130,23 +131,64 @@ api.delete('/spaces/:id', (c) => {
   return c.json({ success: true })
 })
 
+// ------------------------------------------------------------- projects
+
+api.get('/projects', (c) => c.json(readJson<Row[]>(PROJECTS_FILE, [])))
+
+api.post('/projects', async (c) => {
+  const project = await c.req.json()
+  const projects = readJson<Row[]>(PROJECTS_FILE, [])
+  projects.push(project)
+  writeJson(PROJECTS_FILE, projects)
+  return c.json(project)
+})
+
+api.put('/projects/:id', async (c) => {
+  const id = c.req.param('id')
+  const changes = await c.req.json()
+  writeJson(
+    PROJECTS_FILE,
+    readJson<Row[]>(PROJECTS_FILE, []).map((p) => (p.id === id ? { ...p, ...changes } : p))
+  )
+  return c.json({ success: true })
+})
+
+/**
+ * Deleting a project drops its canvas with it — the layout is the project's
+ * own arrangement, meaningless once the project is gone. The cards are not
+ * touched; unfiling them is the client's job, same as spaces.
+ */
+api.delete('/projects/:id', (c) => {
+  const id = c.req.param('id')
+  writeJson(
+    PROJECTS_FILE,
+    readJson<Row[]>(PROJECTS_FILE, []).filter((p) => p.id !== id)
+  )
+
+  const layouts = readJson<Record<string, unknown>>(LAYOUTS_FILE, {})
+  delete layouts[`project:${id}`]
+  writeJson(LAYOUTS_FILE, layouts)
+
+  return c.json({ success: true })
+})
+
 // -------------------------------------------------------------- layouts
 
 api.get('/layouts', (c) => c.json(readJson(LAYOUTS_FILE, {})))
 
-api.put('/layouts/:spaceKey', async (c) => {
-  const spaceKey = c.req.param('spaceKey')
+api.put('/layouts/:canvasKey', async (c) => {
+  const canvasKey = c.req.param('canvasKey')
   const { positions = {}, removed = [] } = await c.req.json<{
     positions: Record<string, unknown>
     removed: string[]
   }>()
 
   const layouts = readJson<Record<string, Record<string, unknown>>>(LAYOUTS_FILE, {})
-  layouts[spaceKey] = { ...(layouts[spaceKey] || {}), ...positions }
-  for (const cardId of removed) delete layouts[spaceKey][cardId]
+  layouts[canvasKey] = { ...(layouts[canvasKey] || {}), ...positions }
+  for (const cardId of removed) delete layouts[canvasKey][cardId]
 
   writeJson(LAYOUTS_FILE, layouts)
-  return c.json(layouts[spaceKey])
+  return c.json(layouts[canvasKey])
 })
 
 // ----------------------------------------------------------- embeddings

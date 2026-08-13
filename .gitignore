@@ -9,6 +9,12 @@ dist/
 data/
 backups/
 
+# Design reference screenshots
+refs/
+
+# Filmstrips from scripts/preview-star.py and scripts/check-star-css.py
+tmp-star/
+
 # Eval / one-off recovery artifacts
 eval-50/
 eval-200/

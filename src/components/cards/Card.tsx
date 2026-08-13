@@ -13,30 +13,13 @@ interface CardProps {
   card: CardType
 }
 
-const TYPE_PILL: Record<string, { label: string; tone: 'dark' | 'light' }> = {
-  note: { label: 'NOTE', tone: 'light' },
-  image: { label: 'IMAGE', tone: 'dark' },
-  video: { label: 'VIDEO', tone: 'dark' },
-  link: { label: 'LINK', tone: 'dark' },
-  highlight: { label: 'HIGHLIGHT', tone: 'light' },
-}
-
-function TypePill({ type, extra }: { type: CardType['type']; extra?: string }) {
-  const meta = TYPE_PILL[type]
-  if (!meta) return null
-  return (
-    <span
-      className={clsx(
-        'inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold tracking-wider',
-        meta.tone === 'dark'
-          ? 'bg-[#0f172a]/80 text-white backdrop-blur-sm'
-          : 'bg-[#f3f4f6] text-text-muted'
-      )}
-    >
-      {meta.label}
-      {extra && <span className="opacity-80">{extra}</span>}
-    </span>
-  )
+/** The kind of card, carried by the shape of its bottom-right corner. */
+const CORNER: Record<CardType['type'], string> = {
+  note: 'card-shaped card-shaped--sharp',
+  image: 'card-shaped card-shaped--round',
+  video: 'card-shaped card-shaped--slice',
+  link: 'card-shaped card-shaped--cut',
+  highlight: 'card-shaped card-shaped--quarter',
 }
 
 export function Card({ card }: CardProps) {
@@ -48,6 +31,7 @@ export function Card({ card }: CardProps) {
   const extraSpaces = memberSpaces.length - 1
 
   const isMediaTop = card.type === 'image' || card.type === 'video' || card.type === 'link'
+  const titleText = card.type === 'link' ? card.title || card.preview?.title : card.title
 
   return (
     <>
@@ -56,67 +40,41 @@ export function Card({ card }: CardProps) {
         onClick={onClick}
         onContextMenu={onMenu}
         className={clsx(
-          'group relative bg-white rounded-2xl overflow-hidden cursor-pointer w-full max-w-full min-w-0',
-          'transition-all duration-150',
-          isSelected
-            ? 'ring-2 ring-accent-primary shadow-card-hover'
-            : 'shadow-card hover:shadow-card-hover hover:-translate-y-0.5',
-          'select-none'
+          'card-surface group relative overflow-hidden cursor-pointer select-none',
+          'w-full max-w-full min-w-0 bg-card transition-colors duration-150',
+          // Inset: a clip-path or mask cuts to the border box, and an outset
+          // ring is drawn beyond it, so on a shaped card it would vanish
+          // entirely rather than just at the corner.
+          isSelected ? 'ring-2 ring-inset ring-accent' : 'hover:bg-sunken',
+          CORNER[card.type]
         )}
       >
         {isSelected && (
-          <div className="absolute top-2 left-2 z-20 w-5 h-5 rounded-full bg-accent-primary text-white flex items-center justify-center text-[11px] font-bold shadow">
+          <div className="absolute top-2.5 left-2.5 z-20 w-5 h-5 rounded-full bg-accent text-white flex items-center justify-center text-[11px] font-bold">
             ✓
           </div>
         )}
 
-        {isMediaTop && (
-          <div className="relative">
-            {card.type === 'image' || card.type === 'video' ? (
-              <CardMedia card={card} />
-            ) : (
-              <CardLink card={card} />
-            )}
-            <div className="absolute top-2.5 left-2.5 z-10">
-              <TypePill type={card.type} />
-            </div>
-          </div>
-        )}
+        {isMediaTop &&
+          (card.type === 'link' ? <CardLink card={card} /> : <CardMedia card={card} />)}
 
-        <div className={clsx('px-3.5', isMediaTop ? 'pt-3 pb-3' : 'pt-3.5 pb-3')}>
-          {!isMediaTop && (
-            <div className="flex items-start justify-between mb-2 gap-2">
-              {card.title && (
-                <h3 className="text-xs font-semibold text-text-muted uppercase tracking-wider truncate">
-                  {card.title}
-                </h3>
-              )}
-              <div className="ml-auto"><TypePill type={card.type} /></div>
-            </div>
-          )}
-
+        <div className="px-4 pt-3.5 pb-3">
           {card.type === 'note' && <CardNote card={card} />}
           {card.type === 'highlight' && <CardHighlight card={card} />}
 
-          {isMediaTop && (() => {
-            const titleText = card.type === 'link' ? (card.title || card.preview?.title) : card.title
-            if (!titleText) return null
-            return (
-              <p className="text-sm font-medium text-text leading-snug line-clamp-2 mb-2">
-                {titleText}
-              </p>
-            )
-          })()}
+          {isMediaTop && titleText && (
+            <p className="text-base text-text leading-snug line-clamp-3">{titleText}</p>
+          )}
 
-          <div className="flex items-center justify-between gap-2 mt-2">
+          <div className="card-foot flex items-center justify-between gap-2 mt-3">
             <div className="flex items-center gap-1.5 min-w-0">
               {space && (
                 <>
                   <span
                     className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                    style={{ backgroundColor: space.color || '#94a3b8' }}
+                    style={{ backgroundColor: space.color || 'var(--text-faint)' }}
                   />
-                  <span className="text-[11px] text-text-muted truncate">
+                  <span className="text-xs text-text-faint truncate">
                     {space.name}
                     {extraSpaces > 0 && ` +${extraSpaces}`}
                   </span>
@@ -124,12 +82,12 @@ export function Card({ card }: CardProps) {
               )}
             </div>
             <div className="flex items-center gap-1 flex-shrink-0">
-              <span className="text-[11px] text-text-muted tabular-nums">
+              <span className="text-xs text-text-faint tabular-nums">
                 {timeAgo(card.createdAt)}
               </span>
               <button
                 onClick={onMenu}
-                className="w-5 h-5 ml-1 flex items-center justify-center rounded text-text-muted opacity-0 group-hover:opacity-100 hover:bg-[#f3f4f6] transition-all"
+                className="w-6 h-6 ml-0.5 flex items-center justify-center rounded-full text-text-faint opacity-0 group-hover:opacity-100 hover:bg-bg/60 hover:text-text transition-all"
                 aria-label="More actions"
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg>

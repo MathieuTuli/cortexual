@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { useAppStore, useCardsStore, useSpacesStore } from '@/core/stores'
-import { cardSpaces } from '@/core/types'
+import { useAppStore, useCardsStore, useProjectsStore, useSpacesStore } from '@/core/stores'
+import { cardProjects, cardSpaces } from '@/core/types'
 import { getHostname } from '@/core/utils'
 import { api } from '@/core/api'
 import { Modal, Button, TagInput } from '../ui'
@@ -17,6 +17,7 @@ export function CardViewModal() {
   const updateCard = useCardsStore((s) => s.updateCard)
   const deleteCard = useCardsStore((s) => s.deleteCard)
   const spaces = useSpacesStore((s) => s.spaces)
+  const projects = useProjectsStore((s) => s.projects)
 
   const [blobUrls, setBlobUrls] = useState<string[]>([])
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
@@ -24,6 +25,7 @@ export function CardViewModal() {
 
   const card = cards.find((c) => c.id === viewingCardId)
   const memberSpaces = card ? cardSpaces(card, spaces) : []
+  const memberProjects = card ? cardProjects(card, projects) : []
   const allTags = Array.from(new Set(cards.flatMap((c) => c.tags))).sort()
 
   // Sync tags from card
@@ -103,7 +105,7 @@ export function CardViewModal() {
 
           {card.type === 'highlight' && (
             <div className="space-y-3">
-              <blockquote className="border-l-2 border-[var(--color-border-bold)] pl-4 whitespace-pre-wrap text-text leading-relaxed">
+              <blockquote className="border-l-2 border-sunken pl-4 whitespace-pre-wrap text-text leading-relaxed">
                 {card.text}
               </blockquote>
               {card.note && (
@@ -121,7 +123,7 @@ export function CardViewModal() {
                 {blobUrls.length > 1 && (
                   <button
                     onClick={() => setCurrentImageIndex((prev) => (prev - 1 + blobUrls.length) % blobUrls.length)}
-                    className="absolute left-2 z-10 w-9 h-9 flex items-center justify-center bg-[#0f172a]/60 hover:bg-[#0f172a]/80 text-white rounded-full transition-colors backdrop-blur-sm"
+                    className="absolute left-2 z-10 w-9 h-9 flex items-center justify-center bg-black/45 hover:bg-black/70 text-white rounded-full transition-colors backdrop-blur-sm"
                   >
                     ‹
                   </button>
@@ -134,7 +136,7 @@ export function CardViewModal() {
                 {blobUrls.length > 1 && (
                   <button
                     onClick={() => setCurrentImageIndex((prev) => (prev + 1) % blobUrls.length)}
-                    className="absolute right-2 z-10 w-9 h-9 flex items-center justify-center bg-[#0f172a]/60 hover:bg-[#0f172a]/80 text-white rounded-full transition-colors backdrop-blur-sm"
+                    className="absolute right-2 z-10 w-9 h-9 flex items-center justify-center bg-black/45 hover:bg-black/70 text-white rounded-full transition-colors backdrop-blur-sm"
                   >
                     ›
                   </button>
@@ -149,7 +151,7 @@ export function CardViewModal() {
                       onClick={() => setCurrentImageIndex(index)}
                       className={`flex-shrink-0 w-14 h-14 rounded-lg overflow-hidden border-2 transition-all ${
                         index === currentImageIndex
-                          ? 'border-accent-primary'
+                          ? 'border-accent'
                           : 'border-transparent opacity-60 hover:opacity-100'
                       }`}
                     >
@@ -186,7 +188,7 @@ export function CardViewModal() {
                 <TwitterEmbed tweetId={card.embedData.tweetId as string} />
               )}
               {card.embedType !== 'youtube' && card.embedType !== 'twitter' && (
-                <div className="rounded-2xl border border-[var(--color-border)] overflow-hidden bg-white">
+                <div className="rounded-lg overflow-hidden bg-chip">
                   {card.preview?.image && (
                     <img
                       src={card.preview.image}
@@ -216,10 +218,10 @@ export function CardViewModal() {
                 href={card.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="block px-3.5 py-2.5 rounded-lg bg-[#f9fafb] border border-[var(--color-border)] hover:border-accent-primary transition-colors"
+                className="block px-3.5 py-2.5 rounded-md bg-chip hover:bg-sunken transition-colors"
                 onClick={(e) => e.stopPropagation()}
               >
-                <p className="text-sm text-accent-primary break-all">↗ {card.url}</p>
+                <p className="text-sm text-accent break-all">↗ {card.url}</p>
               </a>
             </div>
           )}
@@ -232,7 +234,7 @@ export function CardViewModal() {
           )}
         </div>
 
-        <div className="pt-4 border-t border-[var(--color-border)]">
+        <div className="pt-4 border-t border-chip">
           <TagInput
             tags={tags}
             availableTags={allTags}
@@ -243,13 +245,13 @@ export function CardViewModal() {
         </div>
 
         {card.subnotes.length > 0 && (
-          <div className="pt-4 border-t border-[var(--color-border)]">
+          <div className="pt-4 border-t border-chip">
             <p className="section-label mb-2">Subnotes</p>
             <div className="space-y-2">
               {card.subnotes.map((subnote) => (
                 <div
                   key={subnote.id}
-                  className="p-3 bg-[#f9fafb] rounded-lg border border-[var(--color-border)] text-sm"
+                  className="p-3 bg-chip rounded-md text-sm"
                 >
                   {subnote.content}
                 </div>
@@ -279,11 +281,11 @@ export function CardViewModal() {
 
         <RelatedCards cardId={card.id} />
 
-        <div className="flex items-center justify-between text-xs text-text-muted pt-4 border-t border-[var(--color-border)]">
+        <div className="flex items-center justify-between text-xs text-text-muted pt-4 border-t border-chip">
           <div className="flex items-center gap-3">
-            {memberSpaces.map((s) => (
+            {[...memberSpaces, ...memberProjects].map((s) => (
               <span key={s.id} className="inline-flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: s.color || '#94a3b8' }} />
+                <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: s.color || 'var(--text-faint)' }} />
                 {s.name}
               </span>
             ))}

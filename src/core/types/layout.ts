@@ -9,44 +9,43 @@ export const CardPositionSchema = z.object({
 
 export type CardPosition = z.infer<typeof CardPositionSchema>
 
-/** cardId -> where that card sits on one space's canvas. */
-export const SpaceLayoutSchema = z.record(CardPositionSchema)
-export type SpaceLayout = z.infer<typeof SpaceLayoutSchema>
+/** cardId -> where that card sits on one project's canvas. */
+export const CanvasLayoutSchema = z.record(CardPositionSchema)
+export type CanvasLayout = z.infer<typeof CanvasLayoutSchema>
 
 /**
- * Layout lives per space, not on the card: a card in three spaces needs three
- * positions. Keyed by space id, plus one pseudo-key for the All cards view,
- * which has no space record to hang off.
+ * Keyed by project. Only projects have canvases — a space is somewhere a card
+ * lives, not a thing you arrange — so there is exactly one canvas per project
+ * and none anywhere else.
  */
-export const LayoutsSchema = z.record(SpaceLayoutSchema)
+export const LayoutsSchema = z.record(CanvasLayoutSchema)
 export type Layouts = z.infer<typeof LayoutsSchema>
 
-export const ALL_CARDS_LAYOUT_KEY = '__all__'
-
-export const DEFAULT_CARD_WIDTH = 260
-
-export function layoutKeyForSpace(spaceId: string | null): string {
-  return spaceId ?? ALL_CARDS_LAYOUT_KEY
+/** Prefixed so a layout key says what it belongs to when read off disk. */
+export function projectLayoutKey(projectId: string): string {
+  return `project:${projectId}`
 }
 
+export const DEFAULT_CARD_WIDTH = 260
+export const CANVAS_GAP = 24
+
 const FALLBACK_COLUMNS = 5
-const FALLBACK_GAP = 24
 const FALLBACK_ROW_HEIGHT = 280
 
 /**
- * Where a card sits when nobody has dragged it yet: a plain grid slot derived
- * from its index. Computed rather than persisted, so layouts.json only ever
- * holds cards you actually moved — otherwise opening the canvas would write
- * a position for all 326 of them.
+ * Where a card sits before anything has measured it: a plain grid slot from its
+ * index. Computed rather than stored, and only on screen for the moment between
+ * first render and the packer replacing it — opening a canvas persists the
+ * packed positions, not these.
  */
 export function fallbackPosition(index: number): CardPosition {
   return {
-    x: (index % FALLBACK_COLUMNS) * (DEFAULT_CARD_WIDTH + FALLBACK_GAP),
+    x: (index % FALLBACK_COLUMNS) * (DEFAULT_CARD_WIDTH + CANVAS_GAP),
     y: Math.floor(index / FALLBACK_COLUMNS) * FALLBACK_ROW_HEIGHT,
     w: DEFAULT_CARD_WIDTH,
   }
 }
 
-export function positionFor(layout: SpaceLayout, cardId: string, index: number): CardPosition {
+export function positionFor(layout: CanvasLayout, cardId: string, index: number): CardPosition {
   return layout[cardId] ?? fallbackPosition(index)
 }

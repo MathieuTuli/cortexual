@@ -93,19 +93,19 @@ export function TagInput({
         ))}
       </div>
       <div className="relative" ref={dropdownRef}>
-        <div className="flex gap-1">
+        <div className="flex gap-2">
           <Input
             placeholder={placeholder}
             value={tagInput}
             onChange={(e) => setTagInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            className="text-sm flex-1"
+            className="flex-1"
           />
           {unusedTags.length > 0 && (
             <button
               type="button"
               onClick={toggleFullDropdown}
-              className="px-2.5 bg-white border border-[var(--color-border)] rounded-lg hover:border-accent-primary text-text-muted text-xs transition-colors"
+              className="w-10 h-10 flex-shrink-0 rounded-md bg-chip hover:bg-sunken text-text-faint text-xs transition-colors"
               title="Show existing tags"
             >
               ▼
@@ -113,12 +113,12 @@ export function TagInput({
           )}
         </div>
         {showDropdown && dropdownTags.length > 0 && (
-          <div className="absolute left-0 right-0 mt-1 max-h-48 overflow-y-auto py-1 bg-white rounded-lg border border-[var(--color-border)] shadow-card z-50">
+          <div className="absolute left-0 right-0 mt-1.5 max-h-48 overflow-y-auto p-1.5 bg-bg rounded-lg shadow-pop z-50">
             {dropdownTags.map((tag) => (
               <button
                 key={tag}
                 type="button"
-                className="w-full px-3.5 py-1.5 text-left text-sm text-text hover:bg-[#f3f4f6] transition-colors"
+                className="w-full h-9 px-3 rounded text-left text-sm text-text-body hover:bg-chip transition-colors"
                 onClick={() => handleAddTag(tag)}
               >
                 {tag}

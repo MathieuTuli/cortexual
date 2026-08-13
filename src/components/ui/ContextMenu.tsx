@@ -75,28 +75,23 @@ export function ContextMenu({ items, position, onClose }: ContextMenuProps) {
   return createPortal(
     <div
       ref={menuRef}
-      className="fixed z-[100] min-w-[180px] py-1 bg-white rounded-xl border border-[var(--color-border)] shadow-card"
+      className="fixed z-[100] min-w-[190px] p-1.5 bg-bg rounded-lg shadow-pop"
       style={{ left: position.x, top: position.y }}
     >
       {items.map((item, index) => {
         if (item.divider) {
-          return (
-            <div
-              key={`divider-${index}`}
-              className="my-1 mx-2 border-t border-[var(--color-border)]"
-            />
-          )
+          return <div key={`divider-${index}`} className="my-1.5 mx-2 h-px bg-chip" />
         }
 
         return (
           <button
             key={item.label}
-            className={`w-full px-3 py-1.5 text-left text-sm flex items-center gap-2 transition-colors ${
+            className={`w-full h-9 px-3 rounded text-left text-sm flex items-center gap-2.5 transition-colors ${
               item.disabled
-                ? 'text-text-muted/50 cursor-not-allowed'
+                ? 'text-text-faint cursor-not-allowed'
                 : item.danger
-                  ? 'text-[#dc2626] hover:bg-[#fef2f2]'
-                  : 'text-text hover:bg-[#f3f4f6]'
+                  ? 'text-danger hover:bg-danger-soft'
+                  : 'text-text-body hover:bg-chip'
             }`}
             onClick={() => {
               if (!item.disabled) {

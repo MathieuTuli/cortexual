@@ -33,7 +33,7 @@ function Action({
       className={clsx(
         'flex-1 inline-flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg',
         'text-[11px] font-medium transition-colors',
-        'text-text-muted hover:text-text hover:bg-white/60',
+        'text-text-muted hover:text-text hover:bg-chip',
         'disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent',
         busy && 'animate-pulse'
       )}
@@ -158,7 +158,7 @@ export function ImportExport() {
   }
 
   return (
-    <div className="px-3 py-3 mt-auto border-t border-white/50">
+    <div className="px-3 py-3 mt-auto">
       <div className="flex items-center gap-0.5">
         <Action
           icon="import"
@@ -194,7 +194,7 @@ export function ImportExport() {
           }
           title="More"
           aria-label="More"
-          className="w-7 h-7 flex-shrink-0 inline-flex items-center justify-center rounded-lg text-text-muted hover:text-text hover:bg-white/60 transition-colors"
+          className="w-7 h-7 flex-shrink-0 inline-flex items-center justify-center rounded-lg text-text-muted hover:text-text hover:bg-chip transition-colors"
         >
           <svg
             width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"

@@ -1,18 +1,18 @@
 .cortexual-bubble {
   position: absolute;
   z-index: 2147483647;
-  padding: 6px 12px;
+  padding: 7px 14px;
   border: none;
   border-radius: 999px;
-  background: #0f172a;
+  background: #1702fc;
   color: #fff;
-  font: 500 12px/1.2 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font: 500 12px/1.2 -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
   cursor: pointer;
-  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.3);
+  box-shadow: 0 4px 14px rgba(23, 2, 252, 0.35);
 }
 
 .cortexual-bubble:hover {
-  background: #1e293b;
+  background: #1200c9;
 }
 
 .cortexual-toast {
@@ -21,14 +21,15 @@
   bottom: 24px;
   left: 50%;
   transform: translateX(-50%);
-  padding: 8px 16px;
+  padding: 10px 18px;
   border-radius: 999px;
-  background: #0f172a;
+  background: #1702fc;
   color: #fff;
-  font: 500 13px/1.2 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  box-shadow: 0 6px 20px rgba(15, 23, 42, 0.35);
+  font: 500 13px/1.2 -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
+  box-shadow: 0 6px 20px rgba(23, 2, 252, 0.3);
 }
 
 .cortexual-toast[data-ok="false"] {
-  background: #dc2626;
+  background: #d92b2b;
+  box-shadow: 0 6px 20px rgba(217, 43, 43, 0.3);
 }

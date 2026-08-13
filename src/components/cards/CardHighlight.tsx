@@ -7,12 +7,12 @@ export function CardHighlight({ card }: { card: HighlightCard }) {
 
   return (
     <div>
-      <blockquote className="border-l-2 border-[var(--color-border-bold)] pl-3 text-sm text-text whitespace-pre-wrap break-words leading-relaxed">
+      <blockquote className="text-base text-text-body whitespace-pre-wrap break-words leading-relaxed">
         {text}
       </blockquote>
 
       {(card.author || card.siteName) && (
-        <p className="mt-2 pl-3 text-[11px] text-text-muted truncate">
+        <p className="mt-2.5 text-xs text-text-faint truncate">
           {card.author}
           {card.author && card.siteName && ' · '}
           {card.siteName}
@@ -20,7 +20,7 @@ export function CardHighlight({ card }: { card: HighlightCard }) {
       )}
 
       {card.note && (
-        <p className="mt-2 text-xs text-text-muted whitespace-pre-wrap break-words leading-relaxed">
+        <p className="mt-2.5 text-sm text-text-muted whitespace-pre-wrap break-words leading-relaxed">
           {card.note}
         </p>
       )}

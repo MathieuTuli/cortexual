@@ -153,7 +153,7 @@ export function SelectionBoxOverlay({ rect }: SelectionBoxOverlayProps) {
 
   return (
     <div
-      className="absolute pointer-events-none border-2 border-accent-primary bg-accent-primary/10 rounded z-50"
+      className="absolute pointer-events-none border-2 border-accent bg-accent/10 rounded z-50"
       style={{
         left: rect.left,
         top: rect.top,

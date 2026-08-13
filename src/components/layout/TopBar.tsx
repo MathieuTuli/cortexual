@@ -1,8 +1,9 @@
 import { useEffect } from 'react'
-import { useAppStore, useCardsStore, useSpacesStore, useSearchStore } from '@/core/stores'
-import { useViewMode } from '@/core/hooks'
+import { useCardsStore, useSearchStore } from '@/core/stores'
+import { useViewMode, useScrolledPast } from '@/core/hooks'
 import type { ViewMode } from '@/core/types'
-import { Tag } from '../ui'
+import { Tag, StarButton } from '../ui'
+import { BarNav } from './BarNav'
 import { clsx } from 'clsx'
 
 const VIEW_MODES: { mode: ViewMode; label: string; icon: JSX.Element }[] = [
@@ -18,26 +19,24 @@ const VIEW_MODES: { mode: ViewMode; label: string; icon: JSX.Element }[] = [
   },
 ]
 
-export function TopBar() {
-  const openCreateModal = useAppStore((s) => s.openCreateModal)
+/**
+ * Roughly the height of one row of cards: far enough that the tongue is a
+ * response to reading rather than to a stray flick of the wheel.
+ */
+const TONGUE_AT = 140
+
+/** Translucent so the grid shows through as it scrolls under, as in the reference. */
+const FLOATING = 'bg-chip/80 backdrop-blur-xl'
+
+export function TopBar({ placeholder }: { placeholder: string }) {
+  const tongue = useScrolledPast(TONGUE_AT)
   const searchQuery = useCardsStore((s) => s.searchQuery)
   const setSearchQuery = useCardsStore((s) => s.setSearchQuery)
   const filterTags = useCardsStore((s) => s.filterTags)
   const removeFilterTag = useCardsStore((s) => s.removeFilterTag)
   const clearFilters = useCardsStore((s) => s.clearFilters)
-  const activeSpaceId = useSpacesStore((s) => s.activeSpaceId)
-  const getSpaceById = useSpacesStore((s) => s.getSpaceById)
-
   const [viewMode, setViewMode] = useViewMode()
   const indexProgress = useSearchStore((s) => s.progress)
-
-  const activeSpace = activeSpaceId ? getSpaceById(activeSpaceId) : null
-
-  // A real new tab, not a route change — it is a separate printable document.
-  const openCanvas = () => {
-    const query = activeSpaceId ? `?space=${encodeURIComponent(activeSpaceId)}` : ''
-    window.open(`/canvas${query}`, '_blank', 'noopener')
-  }
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -51,88 +50,102 @@ export function TopBar() {
   }, [])
 
   return (
-    <div className="mb-6">
-      <div className="flex items-center gap-3">
-        <div className="relative flex-1">
-          <svg
-            className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none"
-            width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-          ><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-          <input
-            id="global-search"
-            type="search"
-            placeholder={activeSpace ? `Search in ${activeSpace.name}…` : 'Search your mind…'}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-white/70 backdrop-blur-md border border-white/60 text-text rounded-full pl-11 pr-20 py-2.5 text-sm placeholder:text-text-muted focus:outline-none focus:bg-white focus:border-accent-primary focus:ring-2 focus:ring-accent-primary/20 transition-colors"
-          />
-          {indexProgress ? (
-            <span
-              className="absolute right-3 top-1/2 -translate-y-1/2 px-2 py-0.5 text-[10px] tabular-nums text-text-muted bg-white/90 rounded border border-[var(--color-border)]"
-              title="Building the search index"
-            >
-              indexing {Math.round((indexProgress.done / indexProgress.total) * 100)}%
-            </span>
-          ) : (
-            <kbd className="absolute right-3 top-1/2 -translate-y-1/2 px-1.5 py-0.5 text-[10px] font-medium text-text-muted bg-white/90 rounded border border-[var(--color-border)]">
-              ⌘ K
-            </kbd>
-          )}
-        </div>
+    <div className="fixed top-0 left-0 right-[var(--scroll-lock,0px)] z-30 pointer-events-none">
+      <div className="tongue" data-shown={tongue} aria-hidden />
+      {/*
+        Siblings in one row, not an overlay beside a margin. The band is the
+        sidebar's width, so the search still lines up with the grid below it,
+        and because the two are laid out against each other rather than
+        positioned independently, neither can land on top of the other however
+        wide the labels turn out to be. flex-wrap is the backstop: if the pills
+        ever outgrow the band they drop to a second line instead of being cut.
+      */}
+      <div className="relative flex items-start pt-3.5 pb-3.5">
+        {/*
+          pt-1.5 puts the 36px cluster's centreline on the 48px search
+          field's, which items-center cannot do here — the right column grows a
+          second row when tag filters are on, and centring against that would
+          drag the nav down with it.
+        */}
+        <BarNav className="w-80 flex-shrink-0 pl-5 pr-3 pt-1.5 pointer-events-auto" />
 
-        <div className="inline-flex p-1 rounded-full bg-white/70 backdrop-blur-md border border-white/60 flex-shrink-0">
-          {VIEW_MODES.map(({ mode, label, icon }) => (
-            <button
-              key={mode}
-              onClick={() => setViewMode(mode)}
-              title={label}
-              aria-label={label}
-              aria-pressed={viewMode === mode}
+        <div className="flex-1 min-w-0 mx-auto max-w-[1280px] px-10">
+        <div className="flex items-center gap-2.5 pointer-events-auto">
+          <div className="relative flex-1">
+            <svg
+              className="absolute left-5 top-1/2 -translate-y-1/2 text-text-faint pointer-events-none"
+              width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+            ><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            <input
+              id="global-search"
+              type="search"
+              placeholder={placeholder}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
               className={clsx(
-                'w-8 h-8 rounded-full flex items-center justify-center transition-colors',
-                viewMode === mode
-                  ? 'bg-[#0f172a] text-white'
-                  : 'text-text-muted hover:text-text'
+                // Matched to the icon buttons beside it, so the row reads as one bar.
+                'w-full h-12 rounded-full pl-14 pr-24 text-[16px]',
+                'text-text placeholder:text-text-faint border-0',
+                'focus:outline-none focus:ring-2 focus:ring-accent/25',
+                FLOATING
               )}
+            />
+            {indexProgress ? (
+              <span
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-xs tabular-nums text-text-faint"
+                title="Building the search index"
+              >
+                indexing {Math.round((indexProgress.done / indexProgress.total) * 100)}%
+              </span>
+            ) : (
+              <kbd className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-text-faint">
+                ⌘K
+              </kbd>
+            )}
+          </div>
+
+          <div className="flex items-center gap-1 flex-shrink-0">
+            {VIEW_MODES.map(({ mode, label, icon }) => (
+              <StarButton
+                key={mode}
+                size="w-12 h-12"
+                onClick={() => setViewMode(mode)}
+                title={label}
+                aria-label={label}
+                aria-pressed={viewMode === mode}
+                className={
+                  viewMode === mode ? 'text-white' : 'text-text-faint hover:text-text'
+                }
+                style={
+                  viewMode === mode
+                    ? ({ '--star-bg': 'var(--accent)', '--star-bg-hover': 'var(--accent-hover)' } as React.CSSProperties)
+                    : ({ '--star-bg': 'rgb(242 242 242 / 0.8)' } as React.CSSProperties)
+                }
+              >
+                {icon}
+              </StarButton>
+            ))}
+          </div>
+
+        </div>
+
+        {filterTags.length > 0 && (
+          <div className="flex items-center gap-2 flex-wrap mt-2.5 pointer-events-auto">
+            {filterTags.map((tag) => (
+              <Tag key={tag} onRemove={() => removeFilterTag(tag)} active>
+                {tag}
+              </Tag>
+            ))}
+            <button
+              onClick={clearFilters}
+              className="text-xs text-text-faint hover:text-text transition-colors"
             >
-              {icon}
+              clear
             </button>
-          ))}
+          </div>
+        )}
         </div>
-
-        <button
-          onClick={openCanvas}
-          title="Open this space as a canvas in a new tab"
-          className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-full bg-white/70 backdrop-blur-md border border-white/60 text-sm text-text-muted hover:text-text hover:bg-white transition-colors flex-shrink-0"
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="8" height="6" rx="1"/><rect x="14" y="7" width="7" height="10" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/></svg>
-          Canvas
-        </button>
-
-        <button
-          onClick={() => openCreateModal()}
-          className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-full bg-[#0f172a] text-white text-sm font-medium hover:bg-[#1e293b] transition-colors flex-shrink-0 shadow-soft"
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
-          Capture
-        </button>
       </div>
-
-      {filterTags.length > 0 && (
-        <div className="flex items-center gap-2 flex-wrap mt-3">
-          {filterTags.map((tag) => (
-            <Tag key={tag} onRemove={() => removeFilterTag(tag)} active>
-              {tag}
-            </Tag>
-          ))}
-          <button
-            onClick={clearFilters}
-            className="text-xs text-text-muted hover:text-text transition-colors"
-          >
-            clear
-          </button>
-        </div>
-      )}
     </div>
   )
 }

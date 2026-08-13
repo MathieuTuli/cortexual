@@ -12,13 +12,11 @@ export function Tag({ children, onClick, onRemove, active, className }: TagProps
   return (
     <span
       className={clsx(
-        'inline-flex items-center gap-1',
-        'font-sans text-[11px] font-medium',
-        'rounded-full px-2 py-0.5',
+        'inline-flex items-center gap-1.5',
+        'font-sans text-xs',
+        'rounded-full h-7 px-3',
         'transition-colors',
-        active
-          ? 'bg-accent-primary text-white'
-          : 'bg-[#f3f4f6] text-[#475569] hover:bg-[#e5e7eb]',
+        active ? 'bg-accent text-white' : 'bg-chip text-text-body hover:bg-sunken',
         onClick && 'cursor-pointer',
         className
       )}
@@ -32,9 +30,10 @@ export function Tag({ children, onClick, onRemove, active, className }: TagProps
             onRemove()
           }}
           className={clsx(
-            'ml-0.5 leading-none',
-            active ? 'text-white/80 hover:text-white' : 'text-text-muted hover:text-text'
+            'leading-none text-sm',
+            active ? 'text-white/70 hover:text-white' : 'text-text-faint hover:text-text'
           )}
+          aria-label={`Remove ${children}`}
         >
           ×
         </button>

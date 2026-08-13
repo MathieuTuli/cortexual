@@ -45,19 +45,19 @@ export function SpaceList() {
   }
 
   return (
-    <div className="px-3">
+    <section>
       <div className="px-3 pb-2 flex items-center justify-between">
         <span className="section-label">Spaces</span>
         <button
           onClick={() => setShowForm(true)}
-          className="w-5 h-5 rounded flex items-center justify-center text-text-muted hover:text-text hover:bg-white/50 transition-colors"
+          className="w-6 h-6 rounded-full flex items-center justify-center text-text-faint hover:text-text hover:bg-chip transition-colors"
           title="New space"
         >
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
         </button>
       </div>
 
-      <div className="space-y-0.5">
+      <div>
         {spaces.map((space, index) => (
           <div
             key={space.id}
@@ -67,9 +67,7 @@ export function SpaceList() {
             onDragOver={(e) => handleDragOver(e, index)}
             onDrop={(e) => handleDrop(e, index)}
             className={
-              dragOverIndex === index && draggedIndex !== index
-                ? 'border-t border-accent-primary'
-                : ''
+              dragOverIndex === index && draggedIndex !== index ? 'border-t border-accent' : ''
             }
           >
             <SpaceItem space={space} />
@@ -78,10 +76,10 @@ export function SpaceList() {
       </div>
 
       {showForm && (
-        <div className="px-2 py-2">
+        <div className="px-3 pt-3">
           <SpaceForm onClose={() => setShowForm(false)} />
         </div>
       )}
-    </div>
+    </section>
   )
 }

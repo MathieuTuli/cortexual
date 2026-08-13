@@ -10,7 +10,7 @@ export function CardNote({ card }: CardNoteProps) {
     : card.content
 
   return (
-    <p className="text-sm text-text whitespace-pre-wrap break-words leading-relaxed">
+    <p className="text-base text-text-body whitespace-pre-wrap break-words leading-relaxed">
       {content}
     </p>
   )

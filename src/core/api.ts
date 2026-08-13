@@ -85,8 +85,8 @@ export const api = {
     return res.json()
   },
 
-  async saveLayout(spaceKey: string, positions: Record<string, unknown>, removed: string[] = []) {
-    const res = await fetch(`${API_BASE}/layouts/${encodeURIComponent(spaceKey)}`, {
+  async saveLayout(canvasKey: string, positions: Record<string, unknown>, removed: string[] = []) {
+    const res = await fetch(`${API_BASE}/layouts/${encodeURIComponent(canvasKey)}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ positions, removed }),
@@ -134,6 +134,35 @@ export const api = {
     if (!res.ok) {
       throw new Error(`Bulk space import failed: ${res.status}`)
     }
+    return res.json()
+  },
+
+  // Projects
+  async getProjects() {
+    const res = await fetch(`${API_BASE}/projects`)
+    return res.json()
+  },
+
+  async createProject(project: any) {
+    const res = await fetch(`${API_BASE}/projects`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(project),
+    })
+    return res.json()
+  },
+
+  async updateProject(id: string, changes: any) {
+    const res = await fetch(`${API_BASE}/projects/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(changes),
+    })
+    return res.json()
+  },
+
+  async deleteProject(id: string) {
+    const res = await fetch(`${API_BASE}/projects/${id}`, { method: 'DELETE' })
     return res.json()
   },
 

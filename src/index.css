@@ -1,94 +1,106 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import './star-ripple.css';
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --color-bg: #f5f6fa;
-  --color-surface: #ffffff;
-  --color-surface-raised: #ffffff;
-  --color-border: #e5e7eb;
-  --color-border-bold: #d1d5db;
-  --color-text: #0f172a;
-  --color-text-muted: #64748b;
+/*
+ * ABC Monument Grotesk is a commercial Dinamo release, so no copy ships here.
+ * Trial fonts are free from abcdinamo.com/form/request-trial-fonts: install the
+ * files and --font-display picks them up, because the names below sit ahead of
+ * the fallback. No @font-face for them on purpose — a url() pointing at a file
+ * that isn't there resolves to index.html through the SPA fallback, and the
+ * browser spends a request failing to parse a page as a font.
+ *
+ * Space Grotesk is the stand-in until then. Self-hosted rather than pulled from
+ * Google: this app runs offline.
+ */
+@font-face {
+  font-family: 'Space Grotesk';
+  src: url('/fonts/space-grotesk-latin.woff2') format('woff2');
+  font-weight: 300 700;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Space Grotesk';
+  src: url('/fonts/space-grotesk-latin-ext.woff2') format('woff2');
+  font-weight: 300 700;
+  font-display: swap;
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF,
+    U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020,
+    U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
 
-  --color-accent-primary: #4c6fff;
-  --color-accent-secondary: #6366f1;
-  --color-accent-highlight: #818cf8;
-  --color-accent-glow: #c7d2fe;
+/*
+ * Two rules hold the surfaces together, both measured off Sublime rather than
+ * guessed. Surfaces are flat black over white — #e5e5e5 is 10% black, #f2f2f2
+ * is 5% — so they stack without ever tinting. The greys that carry text are
+ * warm (r > g > b), which is what keeps the page from reading cold at this
+ * little saturation.
+ */
+:root {
+  /* Channels, not a hex, so Tailwind's /opacity modifiers can compose against
+     it — bg-white/25 becomes rgb(var(--white-rgb) / 0.25). */
+  --white-rgb: 252 252 252;
+  --white: rgb(var(--white-rgb));
+
+  --bg: var(--white);
+  --chip: #f2f2f2;
+  --card: #e5e5e5;
+  --sunken: #dfdfdf;
+
+  --text: #000000;
+  --text-body: #41403e;
+  --text-muted: #89827e;
+  --text-faint: #a29e9c;
+
+  --accent: #1702fc;
+  --accent-hover: #1200c9;
+  --accent-soft: rgba(23, 2, 252, 0.08);
+  --accent-ring: rgba(23, 2, 252, 0.28);
+
+  --danger: #d92b2b;
+  --danger-soft: rgba(217, 43, 43, 0.08);
+
+  /* The accent with its red and blue swapped, so the two read as a pair. */
+  --tongue: rgb(252, 2, 23);
+
+
+  /* Several spellings, because a trial installs under a different name to a
+     bought licence and neither is worth a code change to switch between. */
+  --font-display: 'ABC Monument Grotesk', 'ABC Monument Grotesk Trial',
+    'ABCMonumentGrotesk', 'Monument Grotesk', 'Space Grotesk', -apple-system,
+    BlinkMacSystemFont, sans-serif;
+  --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter', system-ui, sans-serif;
 }
 
 * {
   box-sizing: border-box;
 }
 
-html, body, #root {
+html {
+  /* Reserve the gutter always, so a page that grows past one screen — or a
+     modal locking the body — never nudges everything sideways. */
+  scrollbar-gutter: stable;
+}
+
+body {
+  padding-right: var(--scroll-lock, 0px);
+}
+
+html,
+body,
+#root {
   margin: 0;
   min-height: 100vh;
-  color: var(--color-text);
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
-}
-
-/* Global light grainy gradient — pale blue/lavender with visible texture */
-body {
-  background:
-    radial-gradient(60% 50% at 80% 5%, rgba(129, 140, 248, 0.30) 0%, transparent 65%),
-    radial-gradient(55% 45% at 15% 0%, rgba(56, 189, 248, 0.22) 0%, transparent 70%),
-    radial-gradient(70% 60% at 90% 90%, rgba(167, 139, 250, 0.18) 0%, transparent 65%),
-    linear-gradient(180deg, #e0e7ff 0%, #eef2ff 35%, #f5f6fa 100%);
-  background-attachment: fixed;
-  position: relative;
-}
-
-/* Visible grain texture */
-body::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background-image: url("data:image/svg+xml;utf8,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.85 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  background-size: 220px 220px;
-  opacity: 0.5;
-  pointer-events: none;
-  z-index: 0;
-  mix-blend-mode: multiply;
-}
-
-#root {
-  position: relative;
-  z-index: 1;
-}
-
-/* Glass dividers between panels — lighter so they show on dark top */
-.glass-divider-r {
-  position: relative;
-}
-.glass-divider-r::after {
-  content: '';
-  position: absolute;
-  top: 16px;
-  bottom: 16px;
-  right: 0;
-  width: 1px;
-  background: linear-gradient(180deg, transparent 0%, rgba(15, 23, 42, 0.10) 14%, rgba(15, 23, 42, 0.10) 86%, transparent 100%);
-  pointer-events: none;
-}
-
-.glass-divider-l {
-  position: relative;
-}
-.glass-divider-l::before {
-  content: '';
-  position: absolute;
-  top: 16px;
-  bottom: 16px;
-  left: 0;
-  width: 1px;
-  background: linear-gradient(180deg, transparent 0%, rgba(15, 23, 42, 0.10) 14%, rgba(15, 23, 42, 0.10) 86%, transparent 100%);
-  pointer-events: none;
 }
 
 ::-webkit-scrollbar {
@@ -99,34 +111,370 @@ body::before {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(15, 23, 42, 0.20);
+  background: rgba(0, 0, 0, 0.16);
   border-radius: 8px;
   border: 2px solid transparent;
   background-clip: padding-box;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(15, 23, 42, 0.36);
+  background: rgba(0, 0, 0, 0.28);
   background-clip: padding-box;
   border: 2px solid transparent;
 }
 
 ::selection {
-  background: rgba(76, 111, 255, 0.18);
-  color: var(--color-text);
+  background: var(--accent-soft);
+  color: var(--text);
 }
 
 :focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(76, 111, 255, 0.25);
-  border-radius: 6px;
+  box-shadow: 0 0 0 3px var(--accent-ring);
+  border-radius: 12px;
 }
 
 .section-label {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--color-text-muted);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-faint);
+}
+
+/* In a layer so utility classes outrank it. Unlayered, `.star-btn`
+ * { position: relative } beat a `fixed` utility and quietly dropped the
+ * capture button out of its corner, and `color: inherit` beat `text-white`
+ * and left black icons on the accent. */
+@layer components {
+  /* --------------------------------------------------------------- pill + marquee
+   *
+   * The pill is the element itself, not a pseudo-element behind it, so
+   * `overflow: hidden` clips the scrolling label to the rounded edge — text
+   * disappears into the curve instead of running past it into a square corner.
+   * Hover takes the radius to 100%, which on a wide short box is an ellipse.
+   *
+   * The label repeats several times across a track that holds two identical
+   * halves, and the track slides exactly -50%. That lands on the start of the
+   * second half, so the loop is seamless, and the copies are text-width rather
+   * than box-width, so the line stays dense instead of dragging a gap behind it.
+   */
+  @keyframes marquee-track {
+    from {
+      transform: translate3d(0, 0, 0);
+    }
+    to {
+      transform: translate3d(-50%, 0, 0);
+    }
+  }
+
+  .pill {
+    --pill-bg: var(--chip);
+    --pill-bg-hover: var(--sunken);
+    --pill-fg: var(--text);
+    --pill-radius: 22px;
+    --marquee-speed: 7s;
+
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    appearance: none;
+    border: 0;
+    margin: 0;
+    padding: 0;
+    min-width: 0;
+    max-width: 100%;
+    font: inherit;
+    text-align: center;
+    text-decoration: none;
+    white-space: nowrap;
+    cursor: pointer;
+    user-select: none;
+    overflow: hidden;
+    background: var(--pill-bg);
+    color: var(--pill-fg);
+    border-radius: var(--pill-radius);
+    transition:
+      border-radius 0.18s cubic-bezier(0.1, 0.6, 0.4, 1),
+      background-color 0.12s ease,
+      color 0.12s ease;
+    /* Safari otherwise paints the moving track outside the rounded clip. */
+    -webkit-mask-image: -webkit-radial-gradient(#fff, #000);
+  }
+
+  .pill:hover:not(:disabled) {
+    background: var(--pill-bg-hover);
+  }
+
+  .pill:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .pill--md {
+    height: 44px;
+    font-size: 16px;
+    font-weight: 500;
+    --pill-radius: 22px;
+  }
+  .pill--sm {
+    height: 34px;
+    font-size: 14px;
+    font-weight: 500;
+    --pill-radius: 17px;
+  }
+  .pill--lg {
+    height: 56px;
+    font-size: 19px;
+    font-weight: 500;
+    --pill-radius: 28px;
+  }
+  .pill--nav {
+    height: 36px;
+    font-size: 12px;
+    font-weight: 500;
+    --pill-radius: 18px;
+  }
+  .pill--nav .marquee__static {
+    padding: 0 8px;
+  }
+  .pill--nav .marquee__track {
+    padding-left: 8px;
+  }
+
+  .pill--row {
+    width: 100%;
+    margin-bottom: 4px;
+    height: 40px;
+    font-size: 15px;
+    --pill-radius: 12px;
+    justify-content: flex-start;
+    text-align: left;
+  }
+
+  .pill--md {
+    min-width: 96px;
+  }
+  .pill--sm {
+    min-width: 76px;
+  }
+  .pill--lg {
+    min-width: 120px;
+  }
+
+  /* Three of these have to sit inside a 240px column. */
+  .pill--tight {
+    min-width: 0;
+  }
+  .pill--tight .marquee__static {
+    padding: 0 12px;
+  }
+
+  .pill--row .marquee__static {
+    padding: 0 12px;
+  }
+  .pill--row .marquee__track {
+    padding-left: 12px;
+  }
+
+  /* react-tweet ships its own #fff card. Its theming is variables, so the embed
+     can be told about ours rather than sitting a shade brighter than the page. */
+  .twitter-embed .react-tweet-theme {
+    --tweet-bg-color: var(--white);
+    --tweet-bg-color-hover: var(--white);
+  }
+
+  /* ------------------------------------------------------------ card corners
+   *
+   * A card's kind, carried by the shape of its bottom-right corner. Three
+   * corners are the same on every card so the marker always means the same
+   * thing and always sits in the same place.
+   *
+   * Every treatment works strictly inside a --card-corner square at that
+   * corner, which is what lets the footer reserve exactly that much and be
+   * certain nothing is clipped.
+   */
+  /*
+   * The base radius lives here rather than as a rounded-lg utility. Utilities
+   * are emitted after this layer, so the shorthand border-radius from one beats
+   * a single-corner longhand set here however specific it is — which silently
+   * flattened the round and quarter corners back to 16px and made an image look
+   * exactly like a note. theme() reads the same scale the utility would.
+   */
+  .card-surface {
+    border-radius: theme(borderRadius.lg);
+  }
+
+  .card-shaped {
+    --card-corner: 28px;
+  }
+
+  /* Sharp adds area rather than removing it, so it needs no footer allowance. */
+  .card-shaped--round .card-foot,
+  .card-shaped--quarter .card-foot,
+  .card-shaped--slice .card-foot,
+  .card-shaped--cut .card-foot {
+    padding-right: var(--card-corner);
+  }
+
+  .card-shaped--sharp {
+    border-bottom-right-radius: 0;
+  }
+
+  .card-shaped--round {
+    border-bottom-right-radius: var(--card-corner);
+  }
+
+  .card-shaped--quarter {
+    border-bottom-right-radius: 999px;
+  }
+
+  .card-shaped--slice {
+    clip-path: polygon(
+      0 0,
+      100% 0,
+      100% calc(100% - var(--card-corner)),
+      calc(100% - var(--card-corner)) 100%,
+      0 100%
+    );
+  }
+
+  /*
+   * Masked rather than covered by a shaped element painted in the page colour:
+   * cards also sit on the canvas, whose dot grid a solid patch would blot out.
+   * A mask takes the pixels away, so whatever is behind shows through. The half
+   * pixel between the stops is the antialiasing — a hard stop steps visibly.
+   */
+  .card-shaped--cut {
+    -webkit-mask-image: radial-gradient(
+      circle at 100% 100%,
+      transparent var(--card-corner),
+      #000 calc(var(--card-corner) + 0.5px)
+    );
+    mask-image: radial-gradient(
+      circle at 100% 100%,
+      transparent var(--card-corner),
+      #000 calc(var(--card-corner) + 0.5px)
+    );
+  }
+
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .marquee {
+    position: relative;
+    display: block;
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .marquee__static {
+    display: block;
+    padding: 0 16px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .marquee__track {
+    display: none;
+  }
+
+  .marquee__track > span {
+    flex: 0 0 auto;
+    padding-right: 1.4em;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .pill:hover:not(:disabled) {
+      border-radius: 100%;
+    }
+
+    .pill:hover:not(:disabled) .marquee__static {
+      visibility: hidden;
+    }
+
+    .pill:hover:not(:disabled) .marquee__track {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      width: max-content;
+      animation: marquee-track var(--marquee-speed) linear infinite;
+    }
+  }
+
+  /*
+   * Lifted from abcdinamo.com, where it is the footer: a coloured panel parked
+   * just off screen that slides in with a slight overscale, rounded off on the
+   * two corners facing the page. Ours is the same thing mirrored to the top, so
+   * it is the bottom corners that round and it arrives from above.
+   *
+   * Positioned, and therefore painted above any static sibling regardless of
+   * order — which is why the bar's contents are relative.
+   */
+  .tongue {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    background: var(--tongue);
+    border-bottom-left-radius: 4em;
+    border-bottom-right-radius: 4em;
+    transform: scale(1.05) translate3d(0, -101%, 0);
+    transition: transform 0.25s cubic-bezier(0.1, 0.6, 0.4, 1);
+    pointer-events: none;
+  }
+
+  .tongue[data-shown='true'] {
+    transform: none;
+    /* Opaque, so it must swallow clicks rather than pass them to the grid. */
+    pointer-events: auto;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .tongue {
+      transition: none;
+    }
+  }
+
+  .star-btn {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    appearance: none;
+    border: 0;
+    margin: 0;
+    padding: 0;
+    background: none;
+    color: inherit;
+    cursor: pointer;
+  }
+
+  .star-btn__shape {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    pointer-events: none;
+  }
+
+  .star-btn__icon {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .star-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
 }
 
 .twitter-embed {

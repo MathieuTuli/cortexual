@@ -3,7 +3,7 @@ import { clsx } from 'clsx'
 
 interface IconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'default' | 'ghost'
-  size?: 'sm' | 'md'
+  size?: 'sm' | 'md' | 'lg'
 }
 
 export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
@@ -12,18 +12,17 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
       <button
         ref={ref}
         className={clsx(
-          'inline-flex items-center justify-center rounded-lg',
-          'transition-colors',
-          'disabled:opacity-50 disabled:cursor-not-allowed',
+          'inline-flex items-center justify-center rounded-full flex-shrink-0',
+          'transition-colors duration-150',
+          'disabled:opacity-40 disabled:cursor-not-allowed',
           {
-            'bg-white border border-[var(--color-border)] hover:bg-[#f9fafb] text-text':
-              variant === 'default',
-            'bg-transparent hover:bg-[#f3f4f6] text-text-muted hover:text-text':
-              variant === 'ghost',
+            'bg-chip text-text hover:bg-sunken': variant === 'default',
+            'bg-transparent text-text-faint hover:text-text hover:bg-chip': variant === 'ghost',
           },
           {
-            'w-6 h-6': size === 'sm',
-            'w-8 h-8': size === 'md',
+            'w-7 h-7': size === 'sm',
+            'w-9 h-9': size === 'md',
+            'w-11 h-11': size === 'lg',
           },
           className
         )}

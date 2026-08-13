@@ -1,41 +1,39 @@
-import { Sidebar } from './Sidebar'
+import type { ReactNode } from 'react'
 import { TopBar } from './TopBar'
-import { CardsView } from './CardsView'
-import { RightRail } from './RightRail'
+import { CaptureButton } from './CaptureButton'
+import { NavColumn } from './NavColumn'
 import { CreateCardModal } from '../modals/CreateCardModal'
 import { EditCardModal } from '../modals/EditCardModal'
 import { CardViewModal } from '../modals/CardViewModal'
 import { SelectionActionBar } from '../SelectionActionBar'
 import { useAppStore } from '@/core/stores'
 
-export function AppShell() {
+interface AppShellProps {
+  nav: ReactNode
+  searchPlaceholder: string
+  children: ReactNode
+}
+
+export function AppShell({ nav, searchPlaceholder, children }: AppShellProps) {
   const isCreateModalOpen = useAppStore((s) => s.isCreateModalOpen)
   const isEditModalOpen = useAppStore((s) => s.isEditModalOpen)
   const isViewModalOpen = useAppStore((s) => s.isViewModalOpen)
 
-  const modals = (
-    <>
+  return (
+    <div className="min-h-screen bg-bg">
+      <NavColumn>{nav}</NavColumn>
+
+      {/* Top padding clears the floating bar, which the grid scrolls under. */}
+      <main className="ml-80">
+        <div className="mx-auto max-w-[1280px] px-10 pt-32 pb-40">{children}</div>
+      </main>
+
+      <TopBar placeholder={searchPlaceholder} />
+      <CaptureButton />
+
       {isCreateModalOpen && <CreateCardModal />}
       {isEditModalOpen && <EditCardModal />}
       {isViewModalOpen && <CardViewModal />}
-    </>
-  )
-
-  return (
-    <div className="h-screen flex overflow-hidden">
-      <div className="glass-divider-r flex">
-        <Sidebar />
-      </div>
-      <main className="flex-1 overflow-y-auto overflow-x-hidden">
-        <div className="px-8 pt-6 pb-12 max-w-[1400px]">
-          <TopBar />
-          <CardsView />
-        </div>
-      </main>
-      <div className="glass-divider-l flex">
-        <RightRail />
-      </div>
-      {modals}
       <SelectionActionBar />
     </div>
   )

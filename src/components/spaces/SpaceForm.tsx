@@ -1,23 +1,12 @@
 import { useState } from 'react'
 import { useSpacesStore } from '@/core/stores'
 import { Input, Button } from '../ui'
+import { SPACE_COLORS } from '@/core/palette'
 import { clsx } from 'clsx'
 
 interface SpaceFormProps {
   onClose: () => void
 }
-
-const PRESET_COLORS = [
-  '#ef4444', // red
-  '#f97316', // orange
-  '#eab308', // yellow
-  '#22c55e', // green
-  '#14b8a6', // teal
-  '#0ea5e9', // sky
-  '#6366f1', // indigo
-  '#a855f7', // purple
-  '#ec4899', // pink
-]
 
 export function SpaceForm({ onClose }: SpaceFormProps) {
   const [name, setName] = useState('')
@@ -58,14 +47,14 @@ export function SpaceForm({ onClose }: SpaceFormProps) {
           autoFocus
         />
       </div>
-      <div className="flex gap-1 flex-wrap">
-        {PRESET_COLORS.map((c) => (
+      <div className="flex gap-1.5 flex-wrap">
+        {SPACE_COLORS.map((c) => (
           <button
             key={c}
             type="button"
             className={clsx(
-              'w-5 h-5 rounded-full border-2 transition-transform',
-              color === c ? 'border-white ring-2 ring-offset-1 ring-gray-400 scale-110' : 'border-transparent hover:scale-110'
+              'w-5 h-5 rounded-full transition-transform',
+              color === c ? 'ring-2 ring-offset-2 ring-accent scale-110' : 'hover:scale-110'
             )}
             style={{ backgroundColor: c }}
             onClick={() => setColor(color === c ? null : c)}

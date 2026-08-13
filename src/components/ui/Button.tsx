@@ -1,44 +1,60 @@
-import { forwardRef, type ButtonHTMLAttributes } from 'react'
+import { forwardRef, type ButtonHTMLAttributes, type CSSProperties } from 'react'
 import { clsx } from 'clsx'
+import { Marquee } from './Marquee'
+
+type Variant = 'default' | 'primary' | 'ghost' | 'danger' | 'invert'
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'default' | 'primary' | 'ghost' | 'danger'
+  variant?: Variant
   size?: 'sm' | 'md' | 'lg'
 }
 
+/** Variant colours ride on the properties `.pill` reads, so the shape CSS
+ *  never has to know a variant exists. */
+const TONE: Record<Variant, CSSProperties> = {
+  default: {},
+  primary: {
+    '--pill-bg': 'var(--accent)',
+    '--pill-bg-hover': 'var(--accent-hover)',
+    '--pill-fg': 'var(--white)',
+  },
+  ghost: {
+    '--pill-bg': 'transparent',
+    '--pill-bg-hover': 'var(--chip)',
+    '--pill-fg': 'var(--text-muted)',
+  },
+  danger: {
+    '--pill-bg': 'var(--danger-soft)',
+    '--pill-bg-hover': 'var(--sunken)',
+    '--pill-fg': 'var(--danger)',
+  },
+  invert: { '--pill-bg': 'var(--text)', '--pill-bg-hover': 'var(--text)', '--pill-fg': 'var(--white)' },
+} as Record<Variant, CSSProperties>
+
+const SIZE = { sm: 'pill--sm', md: 'pill--md', lg: 'pill--lg' } as const
+
+const MIN_WIDTH = { sm: 'min-w-[76px]', md: 'min-w-[96px]', lg: 'min-w-[120px]' } as const
+
+/**
+ * The label loops and the pill goes oval on hover, after Dinamo. That needs the
+ * text as a plain string, so a button handed elements keeps the shape and drops
+ * the animation.
+ */
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant = 'default', size = 'md', children, ...props }, ref) => {
-    return (
-      <button
-        ref={ref}
-        className={clsx(
-          'inline-flex items-center justify-center gap-1.5',
-          'font-sans font-medium rounded-full',
-          'transition-all duration-150',
-          'disabled:opacity-50 disabled:cursor-not-allowed',
-          {
-            'bg-white border border-[var(--color-border)] text-text hover:bg-[#f9fafb] hover:border-[var(--color-border-bold)]':
-              variant === 'default',
-            'bg-accent-primary text-white hover:bg-[#3a5cf5] shadow-soft':
-              variant === 'primary',
-            'bg-transparent text-text-muted hover:text-text hover:bg-[#f3f4f6]':
-              variant === 'ghost',
-            'bg-[#fef2f2] text-[#dc2626] border border-[#fecaca] hover:bg-[#fee2e2]':
-              variant === 'danger',
-          },
-          {
-            'px-3 py-1.5 text-xs': size === 'sm',
-            'px-4 py-2 text-sm': size === 'md',
-            'px-5 py-2.5 text-base': size === 'lg',
-          },
-          className
-        )}
-        {...props}
-      >
-        {children}
-      </button>
-    )
-  }
+  ({ className, variant = 'default', size = 'md', children, style, ...props }, ref) => (
+    <button
+      ref={ref}
+      style={{ ...TONE[variant], ...style } as CSSProperties}
+      className={clsx('pill', SIZE[size], MIN_WIDTH[size], className)}
+      {...props}
+    >
+      {typeof children === 'string' ? (
+        <Marquee text={children} />
+      ) : (
+        <span className="px-4">{children}</span>
+      )}
+    </button>
+  )
 )
 
 Button.displayName = 'Button'

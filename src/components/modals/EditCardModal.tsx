@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useDropzone } from 'react-dropzone'
 import { useAppStore, useCardsStore } from '@/core/stores'
-import type { Card, ImageCard, Subnote } from '@/core/types'
+import type { Subnote, UpdateCardInput } from '@/core/types'
 import { generateId, filesFromClipboard, isImage } from '@/core/utils'
 import { api } from '@/core/api'
 import { Modal, Button, Input, Textarea, TagInput } from '../ui'
 import { SpacePicker } from '../spaces'
+import { ProjectPicker } from '../projects'
 import { clsx } from 'clsx'
 
 async function generateThumbnail(file: File): Promise<string> {
@@ -56,6 +57,7 @@ export function EditCardModal() {
   const [caption, setCaption] = useState('')
   const [tags, setTags] = useState<string[]>([])
   const [spaceIds, setSpaceIds] = useState<string[]>([])
+  const [projectIds, setProjectIds] = useState<string[]>([])
   const [author, setAuthor] = useState('')
   const [sourceUrl, setSourceUrl] = useState('')
   const [subnotes, setSubnotes] = useState<Subnote[]>([])
@@ -76,6 +78,7 @@ export function EditCardModal() {
       setCaption('caption' in card ? (card.caption as string) || '' : '')
       setTags([...card.tags])
       setSpaceIds([...card.spaceIds])
+      setProjectIds([...card.projectIds])
       setAuthor(card.author || '')
       setSourceUrl(card.sourceUrl || '')
       setSubnotes([...card.subnotes])
@@ -144,10 +147,11 @@ export function EditCardModal() {
   const handleSave = async () => {
     setIsSubmitting(true)
     try {
-      const updates: Partial<Card> = {
+      const shared = {
         title: title || undefined,
         tags,
         spaceIds,
+        projectIds,
         subnotes,
         // Sent as '' rather than undefined when cleared: the store merges
         // changes over the existing card, and JSON.stringify drops undefined
@@ -156,28 +160,32 @@ export function EditCardModal() {
         author: author.trim(),
         sourceUrl: sourceUrl.trim(),
       }
-      if (card.type === 'note') {
-        (updates as Partial<Card> & { content: string }).content = content
-      }
-      if (card.type === 'highlight') {
-        (updates as Partial<Card> & { text: string }).text = content
-      }
-      if (card.type === 'image' || card.type === 'video') {
-        (updates as Partial<Card> & { caption?: string }).caption = caption || undefined
-      }
 
-      // For image cards: upload any newly added images and append their thumbnails
+      // New images upload first so the thumbnails can go in the same write.
+      const newThumbnails: string[] = []
       if (card.type === 'image' && newImageFiles.length > 0) {
-        const newThumbnails: string[] = []
         for (const file of newImageFiles) {
           await api.uploadMedia(card.id, file)
           if (file.type.startsWith('image/')) {
             newThumbnails.push(await generateThumbnail(file))
           }
         }
-        const existingThumbs = (card as ImageCard).thumbnailDataUrls || []
-        ;(updates as Partial<ImageCard>).thumbnailDataUrls = [...existingThumbs, ...newThumbnails]
       }
+
+      const updates: UpdateCardInput =
+        card.type === 'note'
+          ? { ...shared, content }
+          : card.type === 'highlight'
+            ? { ...shared, text: content }
+            : card.type === 'image'
+              ? {
+                  ...shared,
+                  caption: caption || undefined,
+                  thumbnailDataUrls: [...(card.thumbnailDataUrls || []), ...newThumbnails],
+                }
+              : card.type === 'video'
+                ? { ...shared, caption: caption || undefined }
+                : shared
 
       await updateCard(card.id, updates)
       newImagePreviews.forEach((u) => URL.revokeObjectURL(u))
@@ -224,9 +232,9 @@ export function EditCardModal() {
         )}
 
         {card.type === 'link' && (
-          <div className="px-3.5 py-2.5 bg-[#f9fafb] border border-[var(--color-border)] rounded-lg">
+          <div className="px-3.5 py-2.5 bg-chip rounded-md">
             <p className="text-xs text-text-muted mb-0.5">URL</p>
-            <p className="text-sm text-accent-primary break-all">{card.url}</p>
+            <p className="text-sm text-accent break-all">{card.url}</p>
           </div>
         )}
 
@@ -239,18 +247,18 @@ export function EditCardModal() {
               {(existingMediaUrls.length + newImagePreviews.length) > 0 && (
                 <div className="grid grid-cols-4 gap-2 mb-3">
                   {existingMediaUrls.map((url, i) => (
-                    <div key={`ex-${i}`} className="relative aspect-square rounded-lg overflow-hidden border border-[var(--color-border)]">
+                    <div key={`ex-${i}`} className="relative aspect-square rounded-md overflow-hidden">
                       <img src={url} alt={`Image ${i + 1}`} className="w-full h-full object-cover" />
                     </div>
                   ))}
                   {newImagePreviews.map((preview, i) => (
-                    <div key={`new-${i}`} className="relative aspect-square rounded-lg overflow-hidden border-2 border-accent-primary group">
+                    <div key={`new-${i}`} className="relative aspect-square rounded-md overflow-hidden ring-2 ring-accent group">
                       <img src={preview} alt={`New ${i + 1}`} className="w-full h-full object-cover" />
-                      <span className="absolute top-1 left-1 px-1.5 py-0.5 text-[9px] font-semibold rounded bg-accent-primary text-white">NEW</span>
+                      <span className="absolute top-1 left-1 px-1.5 py-0.5 text-[9px] font-semibold rounded bg-accent text-white">NEW</span>
                       <button
                         type="button"
                         onClick={() => removeNewImage(i)}
-                        className="absolute top-1 right-1 w-5 h-5 bg-[#0f172a]/80 text-white rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="absolute top-1 right-1 w-5 h-5 bg-black/60 text-white rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                       >
                         ×
                       </button>
@@ -261,11 +269,11 @@ export function EditCardModal() {
               <div
                 {...getRootProps()}
                 className={clsx(
-                  'rounded-xl p-5 text-center cursor-pointer transition-all',
-                  'bg-[#f9fafb] border-2 border-dashed',
+                  'rounded-xl p-6 text-center cursor-pointer transition-colors',
+                  'bg-chip border-2 border-dashed',
                   isDragActive
-                    ? 'border-accent-primary bg-[#eef2ff]'
-                    : 'border-[var(--color-border-bold)] hover:border-accent-primary'
+                    ? 'border-accent bg-accent-soft'
+                    : 'border-sunken hover:border-accent'
                 )}
               >
                 <input {...getInputProps()} />
@@ -314,7 +322,9 @@ export function EditCardModal() {
 
         <SpacePicker value={spaceIds} onChange={setSpaceIds} />
 
-        <div className="border-t border-[var(--color-border)] pt-4">
+        <ProjectPicker value={projectIds} onChange={setProjectIds} />
+
+        <div className="border-t border-chip pt-4">
           <button
             onClick={() => setShowSubnotes(!showSubnotes)}
             className="flex items-center gap-2 text-sm text-text-muted hover:text-text"
@@ -328,12 +338,12 @@ export function EditCardModal() {
               {subnotes.map((subnote) => (
                 <div
                   key={subnote.id}
-                  className="flex items-start gap-2 p-3 bg-[#f9fafb] border border-[var(--color-border)] rounded-lg"
+                  className="flex items-start gap-2 p-3 bg-chip rounded-md"
                 >
                   <p className="flex-1 text-sm">{subnote.content}</p>
                   <button
                     onClick={() => removeSubnote(subnote.id)}
-                    className="text-text-muted hover:text-[#dc2626] text-xs"
+                    className="text-text-muted hover:text-danger text-xs"
                   >
                     Remove
                   </button>
@@ -359,7 +369,7 @@ export function EditCardModal() {
           )}
         </div>
 
-        <div className="text-xs text-text-muted space-y-0.5 pt-3 border-t border-[var(--color-border)]">
+        <div className="text-xs text-text-muted space-y-0.5 pt-3 border-t border-chip">
           <p>Created {new Date(card.createdAt).toLocaleString()}</p>
           <p>Updated {new Date(card.updatedAt).toLocaleString()}</p>
         </div>

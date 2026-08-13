@@ -1,25 +1,9 @@
 import { create } from 'zustand'
 import { api } from '../api'
 import type { Space, CreateSpaceInput, UpdateSpaceInput } from '../types'
+import { SPACE_COLORS } from '../palette'
 import { generateId } from '../utils'
 import { useCardsStore } from './cards-store'
-
-// Y2K-inspired color palette
-const SPACE_COLORS = [
-  '#ef4444', // red
-  '#f97316', // orange
-  '#eab308', // yellow
-  '#22c55e', // green
-  '#14b8a6', // teal
-  '#0ea5e9', // sky
-  '#6366f1', // indigo
-  '#a855f7', // purple
-  '#ec4899', // pink
-]
-
-function getRandomColor(): string {
-  return SPACE_COLORS[Math.floor(Math.random() * SPACE_COLORS.length)]
-}
 
 interface SpacesState {
   spaces: Space[]
@@ -67,7 +51,7 @@ export const useSpacesStore = create<SpacesState>((set, get) => ({
       id: generateId(),
       name: input.name,
       description: input.description,
-      color: input.color || getRandomColor(),
+      color: input.color || SPACE_COLORS[existingSpaces.length % SPACE_COLORS.length],
       icon: input.icon,
       isDefault: false,
       sortOrder: existingSpaces.length,
@@ -101,7 +85,7 @@ export const useSpacesStore = create<SpacesState>((set, get) => ({
 
     // Unfile the cards rather than deleting them — a card may live in other
     // spaces too, and one that doesn't just becomes uncategorized.
-    await useCardsStore.getState().removeSpaceFromCards(id)
+    await useCardsStore.getState().setMembership(null, 'spaceIds', id, 'remove')
 
     set((state) => ({
       spaces: state.spaces.filter((s) => s.id !== id),

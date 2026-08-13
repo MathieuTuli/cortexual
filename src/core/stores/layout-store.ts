@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { api } from '../api'
-import type { CardPosition, Layouts, SpaceLayout } from '../types'
+import type { CanvasLayout, CardPosition, Layouts } from '../types'
 
 /** How long to sit on drag updates before writing them to disk. */
 const FLUSH_DELAY_MS = 400
@@ -13,16 +13,16 @@ interface Pending {
 const pending = new Map<string, Pending>()
 const timers = new Map<string, ReturnType<typeof setTimeout>>()
 
-function queueFlush(spaceKey: string) {
-  clearTimeout(timers.get(spaceKey))
+function queueFlush(canvasKey: string) {
+  clearTimeout(timers.get(canvasKey))
   timers.set(
-    spaceKey,
+    canvasKey,
     setTimeout(() => {
-      const batch = pending.get(spaceKey)
-      pending.delete(spaceKey)
-      timers.delete(spaceKey)
+      const batch = pending.get(canvasKey)
+      pending.delete(canvasKey)
+      timers.delete(canvasKey)
       if (!batch) return
-      api.saveLayout(spaceKey, batch.positions, Array.from(batch.removed))
+      api.saveLayout(canvasKey, batch.positions, Array.from(batch.removed))
     }, FLUSH_DELAY_MS)
   )
 }
@@ -32,14 +32,14 @@ interface LayoutState {
   isLoaded: boolean
 
   loadLayouts: () => Promise<void>
-  getLayout: (spaceKey: string) => SpaceLayout
-  setPositions: (spaceKey: string, positions: Record<string, CardPosition>) => void
-  removePositions: (spaceKey: string, cardIds: string[]) => void
+  getLayout: (canvasKey: string) => CanvasLayout
+  setPositions: (canvasKey: string, positions: Record<string, CardPosition>) => void
+  removePositions: (canvasKey: string, cardIds: string[]) => void
   /** Write any queued changes immediately — call before the page goes away. */
   flush: () => Promise<void>
 }
 
-const EMPTY: SpaceLayout = {}
+const EMPTY: CanvasLayout = {}
 
 export const useLayoutStore = create<LayoutState>((set, get) => ({
   layouts: {},
@@ -50,44 +50,44 @@ export const useLayoutStore = create<LayoutState>((set, get) => ({
     set({ layouts: layouts || {}, isLoaded: true })
   },
 
-  getLayout: (spaceKey) => get().layouts[spaceKey] || EMPTY,
+  getLayout: (canvasKey) => get().layouts[canvasKey] || EMPTY,
 
-  setPositions: (spaceKey, positions) => {
+  setPositions: (canvasKey, positions) => {
     set((state) => ({
       layouts: {
         ...state.layouts,
-        [spaceKey]: { ...(state.layouts[spaceKey] || {}), ...positions },
+        [canvasKey]: { ...(state.layouts[canvasKey] || {}), ...positions },
       },
     }))
 
-    const batch = pending.get(spaceKey) || { positions: {}, removed: new Set<string>() }
+    const batch = pending.get(canvasKey) || { positions: {}, removed: new Set<string>() }
     Object.assign(batch.positions, positions)
     for (const id of Object.keys(positions)) batch.removed.delete(id)
-    pending.set(spaceKey, batch)
-    queueFlush(spaceKey)
+    pending.set(canvasKey, batch)
+    queueFlush(canvasKey)
   },
 
-  removePositions: (spaceKey, cardIds) => {
+  removePositions: (canvasKey, cardIds) => {
     set((state) => {
-      const next = { ...(state.layouts[spaceKey] || {}) }
+      const next = { ...(state.layouts[canvasKey] || {}) }
       for (const id of cardIds) delete next[id]
-      return { layouts: { ...state.layouts, [spaceKey]: next } }
+      return { layouts: { ...state.layouts, [canvasKey]: next } }
     })
 
-    const batch = pending.get(spaceKey) || { positions: {}, removed: new Set<string>() }
+    const batch = pending.get(canvasKey) || { positions: {}, removed: new Set<string>() }
     for (const id of cardIds) {
       delete batch.positions[id]
       batch.removed.add(id)
     }
-    pending.set(spaceKey, batch)
-    queueFlush(spaceKey)
+    pending.set(canvasKey, batch)
+    queueFlush(canvasKey)
   },
 
   flush: async () => {
-    const writes = Array.from(pending.entries()).map(([spaceKey, batch]) => {
-      clearTimeout(timers.get(spaceKey))
-      timers.delete(spaceKey)
-      return api.saveLayout(spaceKey, batch.positions, Array.from(batch.removed))
+    const writes = Array.from(pending.entries()).map(([canvasKey, batch]) => {
+      clearTimeout(timers.get(canvasKey))
+      timers.delete(canvasKey)
+      return api.saveLayout(canvasKey, batch.positions, Array.from(batch.removed))
     })
     pending.clear()
     await Promise.all(writes)

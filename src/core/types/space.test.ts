@@ -6,6 +6,7 @@ function card(spaceIds: string[]): Card {
   return {
     id: 'c1',
     spaceIds,
+    projectIds: [],
     type: 'note',
     content: '',
     tags: [],

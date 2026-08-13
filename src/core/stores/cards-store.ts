@@ -1,8 +1,24 @@
 import { create } from 'zustand'
 import { api } from '../api'
 import type { Card, CreateCardInput, UpdateCardInput } from '../types'
-import { cardIsInSpace } from '../types'
+import { cardIsInProject, cardIsInSpace, libraryCards } from '../types'
 import { generateId } from '../utils'
+
+export type MembershipField = 'spaceIds' | 'projectIds'
+
+/**
+ * The card's new membership list, or null when it already reads that way.
+ * Returning null is what keeps an unchanged card from being rewritten to disk.
+ */
+function nextMembership(
+  current: string[],
+  id: string,
+  action: 'add' | 'remove'
+): string[] | null {
+  const present = current.includes(id)
+  if (action === 'add') return present ? null : [...current, id]
+  return present ? current.filter((x) => x !== id) : null
+}
 
 export interface NewCard {
   input: CreateCardInput
@@ -23,9 +39,16 @@ interface CardsState {
   createCards: (newCards: NewCard[], onProgress?: (done: number, total: number) => void) => Promise<Card[]>
   updateCard: (id: string, changes: UpdateCardInput) => Promise<void>
   deleteCard: (id: string) => Promise<void>
-  removeSpaceFromCards: (spaceId: string) => Promise<void>
-  addCardsToSpace: (cardIds: string[], spaceId: string) => Promise<void>
-  removeCardsFromSpace: (cardIds: string[], spaceId: string) => Promise<void>
+  /**
+   * Add or remove one space/project across a set of cards, or across every
+   * card when cardIds is null.
+   */
+  setMembership: (
+    cardIds: string[] | null,
+    field: MembershipField,
+    id: string,
+    action: 'add' | 'remove'
+  ) => Promise<void>
   setSearchQuery: (query: string) => void
   setSemanticIds: (ids: string[]) => void
   setFilterTags: (tags: string[]) => void
@@ -33,6 +56,7 @@ interface CardsState {
   removeFilterTag: (tag: string) => void
   clearFilters: () => void
   getCardsBySpace: (spaceId: string | null) => Card[]
+  getCardsByProject: (projectId: string) => Card[]
   getAllTags: () => string[]
 }
 
@@ -129,69 +153,26 @@ export const useCardsStore = create<CardsState>((set, get) => ({
     await api.deleteCard(id)
   },
 
-  /**
-   * Deleting a space unfiles its cards; it doesn't delete them. A card that
-   * also lived elsewhere keeps those memberships, and one that didn't falls
-   * back to uncategorized.
-   */
-  removeSpaceFromCards: async (spaceId) => {
+  setMembership: async (cardIds, field, id, action) => {
     const updatedAt = new Date().toISOString()
-    const affected = get().cards.filter((c) => c.spaceIds.includes(spaceId))
+    const only = cardIds && new Set(cardIds)
 
-    set((state) => ({
-      cards: state.cards.map((c) =>
-        c.spaceIds.includes(spaceId)
-          ? ({ ...c, spaceIds: c.spaceIds.filter((s) => s !== spaceId), updatedAt } as Card)
-          : c
-      ),
-    }))
-
-    for (const card of affected) {
-      await api.updateCard(card.id, {
-        spaceIds: card.spaceIds.filter((s) => s !== spaceId),
-        updatedAt,
-      })
+    const changes = new Map<string, string[]>()
+    for (const card of get().cards) {
+      if (only && !only.has(card.id)) continue
+      const next = nextMembership(card[field], id, action)
+      if (next) changes.set(card.id, next)
     }
-  },
-
-  addCardsToSpace: async (cardIds, spaceId) => {
-    const updatedAt = new Date().toISOString()
-    const changed = get().cards.filter(
-      (c) => cardIds.includes(c.id) && !c.spaceIds.includes(spaceId)
-    )
+    if (changes.size === 0) return
 
     set((state) => ({
       cards: state.cards.map((c) =>
-        changed.some((x) => x.id === c.id)
-          ? ({ ...c, spaceIds: [...c.spaceIds, spaceId], updatedAt } as Card)
-          : c
+        changes.has(c.id) ? ({ ...c, [field]: changes.get(c.id)!, updatedAt } as Card) : c
       ),
     }))
 
-    for (const card of changed) {
-      await api.updateCard(card.id, { spaceIds: [...card.spaceIds, spaceId], updatedAt })
-    }
-  },
-
-  removeCardsFromSpace: async (cardIds, spaceId) => {
-    const updatedAt = new Date().toISOString()
-    const changed = get().cards.filter(
-      (c) => cardIds.includes(c.id) && c.spaceIds.includes(spaceId)
-    )
-
-    set((state) => ({
-      cards: state.cards.map((c) =>
-        changed.some((x) => x.id === c.id)
-          ? ({ ...c, spaceIds: c.spaceIds.filter((s) => s !== spaceId), updatedAt } as Card)
-          : c
-      ),
-    }))
-
-    for (const card of changed) {
-      await api.updateCard(card.id, {
-        spaceIds: card.spaceIds.filter((s) => s !== spaceId),
-        updatedAt,
-      })
+    for (const [cardId, ids] of changes) {
+      await api.updateCard(cardId, { [field]: ids, updatedAt })
     }
   },
 
@@ -229,9 +210,10 @@ export const useCardsStore = create<CardsState>((set, get) => ({
   getCardsBySpace: (spaceId) => {
     const { cards, searchQuery, filterTags } = get()
 
-    let filtered = spaceId
-      ? cards.filter((c) => cardIsInSpace(c, spaceId))
-      : cards
+    // Project documents are not library cards; a doc has no space, so this
+    // only actually changes All cards, where they would otherwise turn up.
+    const visible = libraryCards(cards)
+    let filtered = spaceId ? visible.filter((c) => cardIsInSpace(c, spaceId)) : visible
 
     if (searchQuery) {
       const query = searchQuery.toLowerCase()
@@ -264,6 +246,10 @@ export const useCardsStore = create<CardsState>((set, get) => ({
     }
 
     return filtered
+  },
+
+  getCardsByProject: (projectId) => {
+    return get().cards.filter((c) => cardIsInProject(c, projectId))
   },
 
   getAllTags: () => {

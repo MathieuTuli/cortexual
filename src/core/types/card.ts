@@ -15,6 +15,11 @@ export const CardBaseSchema = z.object({
   id: z.string(),
   /** Spaces this card belongs to. Empty means uncategorized. */
   spaceIds: z.array(z.string()),
+  /**
+   * Projects this card is part of. Independent of spaceIds — a project pulls
+   * from wherever it likes, and filing a card into one doesn't move it.
+   */
+  projectIds: z.array(z.string()),
   type: CardTypeEnum,
   title: z.string().optional(),
   // Where the card came from, when it was captured from something else — a
@@ -39,6 +44,8 @@ export const CardBaseSchema = z.object({
 export const NoteCardSchema = CardBaseSchema.extend({
   type: z.literal('note'),
   content: z.string(),
+  /** Written in a project's docs pane, as opposed to captured into the library. */
+  isDoc: z.boolean().optional(),
 })
 
 export const ImageCardSchema = CardBaseSchema.extend({
@@ -114,4 +121,10 @@ export type CreateCardInput =
   | CreateLinkCardInput
   | CreateHighlightCardInput
 
-export type UpdateCardInput = Partial<Omit<Card, 'id' | 'createdAt' | 'type'>>
+/**
+ * Distributed over the union on purpose. `Omit<Card, …>` collapses to the keys
+ * every card shares, which silently made `content`, `text` and `caption`
+ * unpatchable — callers were casting around it one by one.
+ */
+type CardPatch<T> = T extends unknown ? Partial<Omit<T, 'id' | 'createdAt' | 'type'>> : never
+export type UpdateCardInput = CardPatch<Card>

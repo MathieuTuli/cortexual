@@ -1,7 +1,13 @@
 import { useState } from 'react'
 import type { Card } from '@/core/types'
 import { DEFAULT_SPACE_ID } from '@/core/types'
-import { useAppStore, useCardsStore, useSpacesStore } from '@/core/stores'
+import {
+  useAppStore,
+  useCardsStore,
+  useProjectsStore,
+  useSpacesStore,
+  type MembershipField,
+} from '@/core/stores'
 import { ContextMenu, useContextMenu, type ContextMenuItem } from '../ui'
 
 /**
@@ -15,12 +21,14 @@ export function useCardActions(card: Card) {
   const toggleCardSelection = useAppStore((s) => s.toggleCardSelection)
   const isSelecting = useAppStore((s) => s.isSelecting)
   const deleteCard = useCardsStore((s) => s.deleteCard)
-  const addCardsToSpace = useCardsStore((s) => s.addCardsToSpace)
-  const removeCardsFromSpace = useCardsStore((s) => s.removeCardsFromSpace)
+  const setMembership = useCardsStore((s) => s.setMembership)
   const spaces = useSpacesStore((s) => s.spaces)
+  const projects = useProjectsStore((s) => s.projects)
 
   const { contextMenu, showContextMenu, hideContextMenu } = useContextMenu()
-  const [spaceMenuPosition, setSpaceMenuPosition] = useState<{ x: number; y: number } | null>(null)
+  const [submenu, setSubmenu] = useState<{ field: MembershipField; x: number; y: number } | null>(
+    null
+  )
 
   const onClick = (e: React.MouseEvent) => {
     if (e.shiftKey || e.ctrlKey || e.metaKey) {
@@ -44,7 +52,13 @@ export function useCardActions(card: Card) {
       {
         label: 'Spaces',
         icon: '📁',
-        onClick: () => setSpaceMenuPosition({ x: e.clientX, y: e.clientY }),
+        onClick: () => setSubmenu({ field: 'spaceIds', x: e.clientX, y: e.clientY }),
+      },
+      {
+        label: 'Projects',
+        icon: '🗂️',
+        disabled: projects.length === 0,
+        onClick: () => setSubmenu({ field: 'projectIds', x: e.clientX, y: e.clientY }),
       },
       { label: '', divider: true, onClick: () => {} },
       {
@@ -59,23 +73,27 @@ export function useCardActions(card: Card) {
     showContextMenu(e, items)
   }
 
-  // A card can sit in several spaces, so this menu toggles membership rather
-  // than moving the card. Uncategorized isn't a real space — it's what you get
-  // by leaving all of them.
-  const spaceMenuItems: ContextMenuItem[] = spaces
-    .filter((s) => s.id !== DEFAULT_SPACE_ID)
-    .map((s) => {
-      const member = card.spaceIds.includes(s.id)
+  // A card sits in as many spaces and projects as you like, so these toggle
+  // membership rather than moving anything. Uncategorized isn't a real space —
+  // it's what you get by leaving all of them.
+  const membershipItems = (field: MembershipField): ContextMenuItem[] => {
+    const targets =
+      field === 'spaceIds'
+        ? spaces.filter((s) => s.id !== DEFAULT_SPACE_ID).map((s) => ({ ...s, glyph: s.icon || '📁' }))
+        : projects.filter((p) => p.status === 'active').map((p) => ({ ...p, glyph: '🗂️' }))
+
+    return targets.map((target) => {
+      const member = card[field].includes(target.id)
       return {
-        label: member ? `✓ ${s.name}` : s.name,
-        icon: s.icon || '📁',
+        label: member ? `✓ ${target.name}` : target.name,
+        icon: target.glyph,
         onClick: async () => {
-          if (member) await removeCardsFromSpace([card.id], s.id)
-          else await addCardsToSpace([card.id], s.id)
-          setSpaceMenuPosition(null)
+          await setMembership([card.id], field, target.id, member ? 'remove' : 'add')
+          setSubmenu(null)
         },
       }
     })
+  }
 
   const menus = (
     <>
@@ -86,11 +104,11 @@ export function useCardActions(card: Card) {
           onClose={hideContextMenu}
         />
       )}
-      {spaceMenuPosition && (
+      {submenu && (
         <ContextMenu
-          items={spaceMenuItems}
-          position={spaceMenuPosition}
-          onClose={() => setSpaceMenuPosition(null)}
+          items={membershipItems(submenu.field)}
+          position={{ x: submenu.x, y: submenu.y }}
+          onClose={() => setSubmenu(null)}
         />
       )}
     </>

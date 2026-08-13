@@ -52,6 +52,7 @@ function toCard(item: ArchiveItem, kind: ArchiveKind, spaceIds: string[]): Card 
     id: item.id,
     type: 'link',
     spaceIds,
+    projectIds: [],
     url: item.url,
     sourceUrl: item.url,
     author: item.author,
