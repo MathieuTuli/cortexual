@@ -1,0 +1,682 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Star ripple lab</title>
+<style>
+  :root {
+    --accent: #1702fc;
+    --chip: #f2f2f2;
+    --text: #000;
+    --muted: #89827e;
+    --faint: #a29e9c;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 0 0 80px;
+    background: #fff;
+    color: var(--text);
+    font: 14px/1.5 -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
+  }
+  header {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: rgba(255, 255, 255, 0.93);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid #eee;
+    padding: 16px 32px;
+  }
+  h1 { font-size: 17px; margin: 0 0 4px; letter-spacing: -0.01em; }
+  .hint { color: var(--muted); margin: 0 0 14px; max-width: 82ch; font-size: 13px; }
+  .controls { display: flex; flex-wrap: wrap; gap: 22px; align-items: center; }
+  .control { display: flex; flex-direction: column; gap: 2px; }
+  .control label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--faint); }
+  .control .row { display: flex; align-items: center; gap: 8px; }
+  input[type=range] { width: 140px; accent-color: var(--accent); }
+  output { font-variant-numeric: tabular-nums; min-width: 40px; color: var(--muted); font-size: 13px; }
+  button {
+    font: inherit;
+    border: 0;
+    border-radius: 999px;
+    padding: 7px 18px;
+    background: var(--accent);
+    color: #fff;
+    cursor: pointer;
+  }
+  main { padding: 26px 32px; }
+  h2 { font-size: 15px; margin: 34px 0 3px; letter-spacing: -0.01em; }
+  h2:first-child { margin-top: 0; }
+  .blurb { color: var(--muted); font-size: 13px; margin: 0 0 14px; max-width: 82ch; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 16px; }
+  .card { border: 1px solid #ececec; border-radius: 18px; padding: 16px 18px; }
+  .card.ref { background: #fbfbfb; }
+  .shapes { display: flex; align-items: center; gap: 18px; margin-bottom: 10px; }
+  .shapes svg { overflow: visible; display: block; }
+  .shapes svg path { fill: var(--accent); }
+  .card.ref .shapes svg path { fill: var(--faint); }
+  .chip-bg { background: var(--chip); border-radius: 999px; display: inline-flex; }
+  .id { font-weight: 700; }
+  .name { font-weight: 600; }
+  .note { color: var(--muted); margin: 5px 0 0; font-size: 13px; }
+  .stat { color: var(--faint); font-size: 12px; margin: 7px 0 0; font-variant-numeric: tabular-nums; }
+  .card.diagram .chip-bg { background: none; }
+  .diagram svg path, .figure svg path { fill: none; stroke: var(--accent); stroke-width: 2.6; }
+  .rest { fill: none; stroke: #111; stroke-width: 0.8; }
+  .ray { stroke: #ccc; stroke-width: 0.8; }
+  .probe { fill: #111; }
+  .figure { display: flex; flex-wrap: wrap; gap: 12px; }
+  .figure figure { margin: 0; text-align: center; }
+  .figure figcaption { color: var(--faint); font-size: 11px; margin-top: 2px; }
+  .uses { color: var(--faint); font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; margin-top: 3px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Star ripple lab</h1>
+  <p class="hint">
+    <strong>residual</strong> — how much of the motion a plain rotation fails to explain; 0.00 means it is only spinning.
+    <strong>even</strong> — the shallowest point as a fraction of the deepest; 1.00 means every point is identical.
+    Each card lists which sliders it responds to. Give me an id plus slider values.
+  </p>
+  <div class="controls">
+    <div class="control">
+      <label for="loop">Seconds / loop</label>
+      <div class="row"><input id="loop" type="range" min="1" max="20" step="0.5" value="8" /><output id="loopOut"></output></div>
+    </div>
+    <div class="control">
+      <label for="amp">Point depth</label>
+      <div class="row"><input id="amp" type="range" min="0.02" max="0.18" step="0.005" value="0.09" /><output id="ampOut"></output></div>
+    </div>
+    <div class="control">
+      <label for="mix">Flanker mix</label>
+      <div class="row"><input id="mix" type="range" min="0" max="1.2" step="0.05" value="0.45" /><output id="mixOut"></output></div>
+    </div>
+    <div class="control">
+      <label for="invert">Inversion depth</label>
+      <div class="row"><input id="invert" type="range" min="0" max="1" step="0.05" value="1" /><output id="invertOut"></output></div>
+    </div>
+    <div class="control">
+      <label for="travel">Node travel</label>
+      <div class="row"><input id="travel" type="range" min="0" max="6" step="1" value="2" /><output id="travelOut"></output></div>
+    </div>
+    <div class="control">
+      <label for="sway">Sway</label>
+      <div class="row"><input id="sway" type="range" min="0" max="0.4" step="0.01" value="0.18" /><output id="swayOut"></output></div>
+    </div>
+    <div class="control">
+      <label for="wraps">Sway wraps</label>
+      <div class="row"><input id="wraps" type="range" min="1" max="5" step="1" value="2" /><output id="wrapsOut"></output></div>
+    </div>
+    <div class="control">
+      <label for="points">Points</label>
+      <div class="row"><input id="points" type="range" min="5" max="17" step="1" value="11" /><output id="pointsOut"></output></div>
+    </div>
+    <button id="toggle">Pause</button>
+  </div>
+</header>
+<main></main>
+
+<script>
+const TAU = Math.PI * 2
+
+/*
+ * A model maps a material coordinate s (which bit of the rim) and normalised
+ * time t to a radial offset and a tangential offset, both in -1..1, which the
+ * renderer scales by the sliders. Keeping s separate from the drawn angle is
+ * what lets a model move rim material sideways rather than only in and out.
+ */
+
+/**
+ * Carrier at k, two flankers offset from it, each travelling at its own rate.
+ *
+ * The offsets decide the *texture* of the unevenness, not its size: sampling a
+ * flanker at the k lobe positions aliases it down to |offset|, so an offset of 1
+ * makes the depth vary once around the rim — one deep half and one shallow half,
+ * the thing that got rejected — while 4 and 6 scatter the variation into fine
+ * texture. Its size is the mix slider: the previously shipped 11/7/5 ran the
+ * flankers at 1.17x the carrier, which is why it looked so ragged.
+ */
+function flanked(offsets, cycles) {
+  return (s, t, k, cfg) => {
+    const m = cfg.mix
+    const share = [1 / (1 + m), (m / (1 + m)) * 0.58, (m / (1 + m)) * 0.42]
+    const ks = [k, Math.max(1, k + offsets[0]), Math.max(1, k + offsets[1])]
+    return [ks.reduce((sum, kn, i) => sum + share[i] * Math.cos(kn * s - TAU * cycles[i] * t), 0), 0]
+  }
+}
+
+/**
+ * Constant-depth points displaced sideways by a wave running round the rim.
+ * Both cycle counts have to be whole numbers or the loop does not close and the
+ * animation jumps once a lap.
+ */
+function swayed(spinCycles, swayCycles) {
+  return (s, t, k, cfg) => [
+    Math.cos(k * s - TAU * spinCycles * t),
+    Math.sin(cfg.wraps * s - TAU * swayCycles * t),
+  ]
+}
+
+/**
+ * A k-lobed star is one Fourier mode: u = C(t) cos(k0 - phi(t)). Standing means
+ * phi is pinned while C swings through zero; travelling means C is fixed while
+ * phi rotates. Both at once is perfectly possible, and this is it — two waves of
+ * the SAME wavenumber running at DIFFERENT rates:
+ *
+ *   a1 cos(k0 - 2pi c1 t) + a2 cos(k0 - 2pi c2 t)
+ *
+ * One wavenumber means the outline is a flawless k-pointed star at every instant,
+ * so it cannot go uneven. Equal amplitudes mean the mode's magnitude passes clean
+ * through zero, so every point on the rim swings the whole way from crest to
+ * trough. A non-zero mean rate (c1 + c2)/2 means the whole pattern travels while
+ * it does so.
+ *
+ * The earlier attempt ran two waves in OPPOSITE directions at UNEQUAL amplitudes,
+ * which is a different animal: that pins an envelope in space, so the rim barely
+ * moves wherever the envelope dips. That is the "peaks only oscillate between the
+ * midpoint" problem, and it is a property of unequal amplitudes, not of standing
+ * waves.
+ */
+function mode(beat, fixed) {
+  return (s, t, kk, cfg) => {
+    const k = Math.max(1, fixed ?? kk)
+    const gap = 1 - cfg.invert
+    const [a1, a2] = [(1 + gap) / 2, (1 - gap) / 2]
+    return [
+      a1 * Math.cos(k * s - TAU * (cfg.travel + beat) * t) +
+      a2 * Math.cos(k * s - TAU * (cfg.travel - beat) * t), 0]
+  }
+}
+
+const SECTIONS = [
+  {
+    title: 'References — what did not work',
+    blurb: 'Greyed, for comparison only.',
+    ref: true,
+    models: [
+      {
+        id: 'R1', name: 'Single wave',
+        note: 'One wavenumber travelling. Mathematically a travelling wave, visually a rigid spin — there is no third option for a single sinusoid on a ring.',
+        uses: 'depth',
+        f: (s, t, k) => [Math.cos(k * s - TAU * t), 0],
+      },
+      {
+        id: 'R2', name: 'Standing wave',
+        note: 'Points pulse in place and invert. Nothing travels.',
+        uses: 'depth',
+        f: (s, t, k) => [Math.cos(k * s) * Math.cos(TAU * t), 0],
+      },
+      {
+        id: 'R3', name: 'Near flankers (k, k±1)',
+        note: 'What is shipped right now. Offsets of 1 alias to one cycle around the rim: one deep half, one shallow half.',
+        uses: 'depth, mix',
+        f: flanked([-1, 1], [2, -1, 1]),
+      },
+      {
+        id: 'R4', name: 'Distant flankers 11/7/5, as shipped before',
+        note: 'The one you liked but called uneven, at its original mix of 1.17 — flankers louder than the carrier. Ignores the mix slider so you can see the starting point.',
+        uses: 'depth',
+        f: (s, t, k) => [
+          0.46 * Math.cos(k * s - TAU * 3 * t) +
+          0.33 * Math.cos(Math.max(1, k - 4) * s + TAU * 2 * t) +
+          0.21 * Math.cos(Math.max(1, k - 6) * s - TAU * t), 0],
+      },
+    ],
+  },
+  {
+    title: 'Distant flankers, evened out',
+    blurb: 'Same mechanism as R4, with the flanker level on a slider. Drag mix down for uniform, up for ragged; R4 sits at 1.17. The offsets vary the texture of what is left.',
+    models: [
+      {
+        id: 'D1', name: '11 / 7 / 5 — R4 exactly, but tunable',
+        note: 'Offsets -4 and -6, aliasing to 4 and 6 cycles around the rim. Start here and pull mix down until it reads even.',
+        uses: 'depth, mix',
+        f: flanked([-4, -6], [3, -2, 1]),
+      },
+      {
+        id: 'D2', name: '11 / 7 / 5, slower rates',
+        note: 'Same wavenumbers, gentler cycle counts, so the pattern churns less per lap.',
+        uses: 'depth, mix',
+        f: flanked([-4, -6], [2, -1, 1]),
+      },
+      {
+        id: 'D3', name: '11 / 17 / 13',
+        note: 'Flankers above the carrier instead of below. Aliases to the same 6 and 2 cycles, but adds fine detail on the points rather than gross lobes between them.',
+        uses: 'depth, mix',
+        f: flanked([6, 2], [3, -2, 1]),
+      },
+      {
+        id: 'D4', name: '11 / 7 / 16',
+        note: 'One flanker below, one above. Aliases to 4 and 5 — the two textures never line up, so nothing repeats.',
+        uses: 'depth, mix',
+        f: flanked([-4, 5], [3, -2, 1]),
+      },
+      {
+        id: 'D5', name: '11 / 5 / 17',
+        note: 'Both flankers as far out as they go, aliasing to 6 and 6 in opposite directions. The finest texture available.',
+        uses: 'depth, mix',
+        f: flanked([-6, 6], [2, -3, 1]),
+      },
+    ],
+  },
+  {
+    title: 'Sway',
+    blurb: 'Point depth is constant; the wave is sideways displacement running round the rim, so points bunch on the advancing side and spread behind it. Nothing rises or falls, so these read 1.00 even by construction. Sway wraps sets how many bunched regions there are — 2 is the one you liked. Some spin/wraps pairs collapse into a plain rotation (S2 at wraps 1, S4 at wraps 2); the card says so when it happens.',
+    models: [
+      {
+        id: 'S1', name: 'Two-lobed sway — this is the old C2',
+        note: 'The one you said was cool. Identical maths, it just got renamed in the reshuffle. Leave wraps at 2 for exactly C2; the slider generalises it.',
+        uses: 'depth, sway, wraps',
+        f: swayed(0, 1),
+      },
+      {
+        id: 'S2', name: 'Sway + slow turn, same way',
+        note: 'The star drifts in the direction the bunching travels, so the wave outruns the points.',
+        uses: 'depth, sway, wraps',
+        f: swayed(1, 1),
+      },
+      {
+        id: 'S3', name: 'Sway + slow turn, against',
+        note: 'The star drifts against the bunching, so the wave sweeps through the points faster.',
+        uses: 'depth, sway, wraps',
+        f: swayed(-1, 1),
+      },
+      {
+        id: 'S4', name: 'Sway, twice a lap',
+        note: 'A slowly turning star with the bunching running round it twice per loop.',
+        uses: 'depth, sway, wraps',
+        f: swayed(1, 2),
+      },
+    ],
+  },
+  {
+    title: 'Both together',
+    blurb: 'Distant flankers for the depth texture, sway for the travel. The two things you picked out, combined.',
+    models: [
+      {
+        id: 'X1', name: '11 / 7 / 5 + two-lobed sway',
+        note: 'D1 with the sway wave on top.',
+        uses: 'depth, mix, sway, wraps',
+        f: (s, t, k, cfg) => [flanked([-4, -6], [3, -2, 1])(s, t, k, cfg)[0], Math.sin(cfg.wraps * s - TAU * t)],
+      },
+      {
+        id: 'X2', name: '11 / 5 / 17 + two-lobed sway, counter',
+        note: 'Finest depth texture, with the sway running the other way from the carrier.',
+        uses: 'depth, mix, sway, wraps',
+        f: (s, t, k, cfg) => [flanked([-6, 6], [2, -3, 1])(s, t, k, cfg)[0], Math.sin(cfg.wraps * s + TAU * t)],
+      },
+    ],
+  },
+  {
+    title: 'A standing wave whose nodes travel',
+    blurb: 'What you asked for. Every point on the rim swings the whole way from crest to trough, and the pattern travels while it does. One wavenumber throughout, so the star is flawlessly even at every instant — these read 1.00 even by construction, not by tuning. Inversion depth 1 is a full flip (the star flattens to a circle and comes back with points where the notches were); drop it and the flip gets shallower. Node travel 0 is the classic pinned standing wave; raise it and the whole thing drifts. The dot rides the rim at 3 o\'clock so you can watch one fixed spot go out and in.',
+    models: [
+      {
+        id: 'M1', name: 'Inverts once per lap',
+        note: 'The mildest version. Set node travel to 0 to see the pure standing wave it is built from.',
+        uses: 'depth, invert, travel',
+        diagram: true,
+        f: mode(1),
+      },
+      {
+        id: 'M2', name: 'Inverts twice per lap',
+        note: 'Same thing flipping twice as often relative to how far it travels.',
+        uses: 'depth, invert, travel',
+        diagram: true,
+        f: mode(2),
+      },
+      {
+        id: 'M3', name: 'Inverts three times per lap',
+        note: 'Fastest flip. Pair with a high node travel to keep the drift visible.',
+        uses: 'depth, invert, travel',
+        diagram: true,
+        f: mode(3),
+      },
+      {
+        id: 'M5', name: 'Flip staggered around the rim',
+        note: 'M1 flips everywhere at once: one global magnitude, so the whole rim flattens together. This adds a second pattern a couple of wavenumbers away, running at its own rate, which desynchronises the flip — at the instant the main mode passes through flat, this is what is still standing, so the star never blanks and the flip sweeps rather than snaps. Flanker mix sets how much, sway wraps sets how far off. Kept an even number of wavenumbers away so it stays odd, which is what preserves the opposite-ends-opposite property.',
+        uses: 'depth, invert, travel, mix, wraps',
+        diagram: true,
+        f: (s, t, k, cfg) => {
+          const gap = 1 - cfg.invert
+          const m = Math.min(0.45, cfg.mix / 2)
+          const far = Math.max(1, k + 2 * cfg.wraps)
+          return [
+            (1 - m) * (((1 + gap) / 2) * Math.cos(k * s - TAU * (cfg.travel + 1) * t) +
+                       ((1 - gap) / 2) * Math.cos(k * s - TAU * (cfg.travel - 1) * t)) +
+            m * Math.cos(far * s - TAU * (cfg.travel + 2) * t), 0]
+        },
+      },
+      {
+        id: 'M4', name: 'Inverting star + distant flanker',
+        note: 'M1 with a little 11/7 texture mixed in, so the lobes are distinguishable and the travel is easier to see. The only one here that is not perfectly even; the mix slider controls how much.',
+        uses: 'depth, invert, travel, mix',
+        diagram: true,
+        f: (s, t, k, cfg) => [
+          (1 - cfg.mix / 3) * mode(1)(s, t, k, cfg)[0] +
+          (cfg.mix / 3) * Math.cos(Math.max(1, k - 4) * s + TAU * 2 * t), 0],
+      },
+    ],
+  },
+  {
+    title: 'Your diagram, taken literally',
+    blurb: 'Radial displacement = sine, four lobes, travelling by increasing phase — exactly what the figure specifies. Watch the dot at 3 o\'clock: it does swing all the way out and all the way in, so the wave is inverting. The catch is that the whole picture is also a rigid rotation, which is what the eight panels below show.',
+    models: [
+      {
+        id: 'G1', name: 'Four lobes, pure travelling',
+        note: 'The figure as written. Residual 0.00 — a single sinusoid on a ring cannot be anything but a spin.',
+        uses: 'depth',
+        diagram: true,
+        fixedK: 4,
+        f: (s, t) => [Math.cos(4 * s - TAU * t), 0],
+      },
+      {
+        id: 'G2', name: 'Four lobes, inverting and travelling',
+        note: 'The same four lobes of the figure, but with the mode inverting as well as rotating. At this point count the difference from G1 is unmissable.',
+        uses: 'depth, invert, travel',
+        diagram: true,
+        fixedK: 4,
+        f: mode(1, 4),
+      },
+    ],
+  },
+  {
+    title: 'Harmonics — uniform by construction',
+    blurb: 'Only multiples of k, so the shape keeps exact k-fold symmetry and every point is identical at every instant. The points morph rather than change height.',
+    models: [
+      {
+        id: 'H1', name: 'k + 2k',
+        note: 'The harmonic runs at its own rate, so point profiles sharpen, flatten and lean as the star turns.',
+        uses: 'depth',
+        f: (s, t, k) => [0.78 * Math.cos(k * s - TAU * t) + 0.22 * Math.cos(2 * k * s + TAU * 2 * t), 0],
+      },
+      {
+        id: 'H2', name: 'k + 2k + 3k',
+        note: 'Three harmonics at three rates. More churn in the point shape.',
+        uses: 'depth',
+        f: (s, t, k) => [
+          0.68 * Math.cos(k * s - TAU * t) +
+          0.20 * Math.cos(2 * k * s + TAU * 2 * t) +
+          0.12 * Math.cos(3 * k * s - TAU * 3 * t), 0],
+      },
+    ],
+  },
+]
+
+const CENTRE = 50
+const RADIUS = 42
+const SAMPLES = 240
+const BINS = 360
+
+// So scripts can diff a shipped generator against the model actually shown here,
+// rather than against a retyped copy of it.
+window.STAR_MODELS = SECTIONS.flatMap((s) => s.models)
+
+const cfg = { loop: 8, amp: 0.09, mix: 0.45, invert: 1, travel: 2, sway: 0.18, wraps: 2, points: 11 }
+
+/** Radius at one angle, so a probe can show a single spot going out and in. */
+function radiusAt(model, s, t, k) {
+  return RADIUS * (1 + cfg.amp * model.f(s, t, model.fixedK ?? k, cfg)[0])
+}
+
+function outlinePoints(model, t, k, samples = SAMPLES) {
+  const pts = []
+  for (let i = 0; i < samples; i++) {
+    const s = (i / samples) * TAU
+    const [radial, tangential] = model.f(s, t, model.fixedK ?? k, cfg)
+    const r = RADIUS * (1 + cfg.amp * radial)
+    const a = s + cfg.sway * tangential
+    pts.push([CENTRE + r * Math.cos(a), CENTRE + r * Math.sin(a)])
+  }
+  return pts
+}
+
+function toPath(points) {
+  const n = points.length
+  const at = (i) => points[(i + n) % n]
+  const r = (v) => Math.round(v * 100) / 100
+  let d = `M${r(points[0][0])} ${r(points[0][1])}`
+  for (let i = 0; i < n; i++) {
+    const [ax, ay] = at(i - 1)
+    const [bx, by] = at(i)
+    const [cx, cy] = at(i + 1)
+    const [dx, dy] = at(i + 2)
+    d += `C${r(bx + (cx - ax) / 6)} ${r(by + (cy - ay) / 6)} ${r(cx - (dx - bx) / 6)} ${r(cy - (dy - by) / 6)} ${r(cx)} ${r(cy)}`
+  }
+  return d + 'Z'
+}
+
+/**
+ * The rim as r(theta), sampled far denser than the bins it fills: at drawing
+ * resolution the empty bins get carried forward into a staircase, and that noise
+ * alone scores 0.12 residual — enough to make a plain rotation look like it ripples.
+ */
+function profileAt(model, t, k) {
+  const prof = new Array(BINS).fill(null)
+  for (const [x, y] of outlinePoints(model, t, k, BINS * 8)) {
+    const dx = x - CENTRE
+    const dy = y - CENTRE
+    const b = Math.floor((((Math.atan2(dy, dx) % TAU) + TAU) % TAU) / TAU * BINS) % BINS
+    prof[b] = Math.max(prof[b] ?? 0, Math.hypot(dx, dy))
+  }
+  let last = prof.find((v) => v !== null)
+  for (let i = 0; i < BINS; i++) prof[i] === null ? (prof[i] = last) : (last = prof[i])
+  const mean = prof.reduce((a, b) => a + b, 0) / BINS
+  return prof.map((v) => v - mean)
+}
+
+/** How much of the motion a single rigid rotation fails to explain. */
+function residual(model, k) {
+  const base = profileAt(model, 0, k)
+  const scale = base.reduce((a, v) => a + v * v, 0)
+  if (scale < 1e-9) return 0
+  let worst = 0
+  for (let f = 1; f < 10; f++) {
+    const cur = profileAt(model, f / 10, k)
+    let best = Infinity
+    for (let shift = 0; shift < BINS; shift++) {
+      let sum = 0
+      for (let i = 0; i < BINS; i++) {
+        const d = cur[i] - base[(i - shift + BINS) % BINS]
+        sum += d * d
+      }
+      best = Math.min(best, sum)
+    }
+    worst = Math.max(worst, Math.sqrt(best / scale))
+  }
+  return worst
+}
+
+/**
+ * How exactly opposite ends of the rim mirror each other: 0.00 means wherever
+ * there is a crest, the point across the circle is a matching trough.
+ *
+ * This falls out of the wavenumbers rather than the animation. cos(k(0+pi)) is
+ * -cos(k0) for odd k and +cos(k0) for even k, so a shape built only from odd
+ * wavenumbers is antiphase across the circle for free, and one containing even
+ * ones is not. Eleven is odd, which is why the plain modes already score 0.00.
+ */
+function antiphase(profiles) {
+  let worst = 0
+  for (const p of profiles) {
+    const energy = p.reduce((a, v) => a + v * v, 0)
+    if (energy < 1e-9) continue
+    const mirrored = p.reduce((a, v, i) => a + (v + p[(i + BINS / 2) % BINS]) ** 2, 0)
+    worst = Math.max(worst, Math.sqrt(mirrored / energy))
+  }
+  return worst
+}
+
+/**
+ * Shallowest point over deepest, worst frame. 1.00 means every point identical.
+ *
+ * Frames where the rim has gone nearly flat are skipped. A fully inverting mode
+ * passes clean through zero depth twice a cycle, and picking peaks out of a flat
+ * profile measures rounding noise, which showed up as a bogus 0.33 on shapes that
+ * are a single Fourier mode and therefore exactly even by construction.
+ */
+function evenness(profiles, k) {
+  const half = Math.max(2, Math.floor(BINS / (2 * (k + 3))))
+  const depth = (p) => Math.max(...p) - Math.min(...p)
+  const floor = 0.2 * Math.max(...profiles.map(depth))
+  let worst = 1
+  for (const prof of profiles) {
+    if (depth(prof) < floor) continue
+    const peaks = []
+    for (let i = 0; i < BINS; i++) {
+      let top = true
+      for (let j = -half; j <= half && top; j++) if (prof[(i + j + BINS) % BINS] > prof[i]) top = false
+      if (top && prof[i] > 0) peaks.push(prof[i])
+    }
+    if (peaks.length > 1) worst = Math.min(worst, Math.min(...peaks) / Math.max(...peaks))
+  }
+  return worst
+}
+
+const main = document.querySelector('main')
+const cards = []
+
+for (const section of SECTIONS) {
+  main.insertAdjacentHTML(
+    'beforeend',
+    `<h2>${section.title}</h2><p class="blurb">${section.blurb}</p><div class="grid"></div>`
+  )
+  const grid = main.lastElementChild
+  for (const model of section.models) {
+    const el = document.createElement('div')
+    el.className = `card${section.ref ? ' ref' : ''}${model.diagram ? ' diagram' : ''}`
+    const chrome = model.diagram
+      ? `<circle class="rest" cx="50" cy="50" r="42" /><line class="ray" x1="50" y1="50" x2="98" y2="50" />`
+      : ''
+    el.innerHTML = `
+      <div class="shapes">
+        <span class="chip-bg"><svg width="96" height="96" viewBox="0 0 100 100">${chrome}<path />${
+          model.diagram ? '<circle class="probe" r="3.4" />' : ''
+        }</svg></span>
+        <svg width="40" height="40" viewBox="0 0 100 100"><path /></svg>
+      </div>
+      <div><span class="id">${model.id}</span> · <span class="name">${model.name}</span></div>
+      <p class="note">${model.note}</p>
+      <p class="stat"></p>
+      <p class="uses">sliders: ${model.uses}</p>`
+    grid.append(el)
+    cards.push({
+      model,
+      paths: [...el.querySelectorAll('path')],
+      probe: el.querySelector('.probe'),
+      stat: el.querySelector('.stat'),
+    })
+  }
+}
+
+/*
+ * The eight panels of the supplied figure, drawn from the same code as the live
+ * cards. Static: each panel is one value of the travelling phase, so they can be
+ * held against the original. Rotating any panel by a quarter turn lands exactly
+ * on the panel two along, which is the whole point.
+ */
+const PHASES = ['0', 'π/4', 'π/2', '3π/4', 'π', '5π/4', '3π/2', '7π/4']
+const figureModel = { f: (s, t) => [Math.cos(4 * s - TAU * t), 0], fixedK: 4 }
+
+main.insertAdjacentHTML(
+  'beforeend',
+  `<h2>The figure, panel by panel</h2>
+   <p class="blurb">Drawn from the same code as G1, at the eight phases in your image.
+   Panel 3 is panel 1 turned a quarter of a lobe; panel 5 is panel 1 turned half.
+   Nothing changes shape — that is what "a single sine wrapped onto a ring" comes out as.</p>
+   <div class="figure"></div>`
+)
+const figure = main.lastElementChild
+
+for (let i = 0; i < 8; i++) {
+  figure.insertAdjacentHTML(
+    'beforeend',
+    `<figure><svg width="118" height="118" viewBox="0 0 100 100">
+       <circle class="rest" cx="50" cy="50" r="42" />
+       <line class="ray" x1="50" y1="50" x2="98" y2="50" />
+       <path /><circle class="probe" r="3.4" />
+     </svg><figcaption>${i + 1} · φ = ${PHASES[i]}</figcaption></figure>`
+  )
+}
+
+function drawFigure() {
+  ;[...figure.querySelectorAll('svg')].forEach((svg, i) => {
+    const t = i / 8
+    svg.querySelector('path').setAttribute('d', toPath(outlinePoints(figureModel, t, 4)))
+    const r = radiusAt(figureModel, 0, t, 4)
+    svg.querySelector('.probe').setAttribute('cx', 50 + r)
+    svg.querySelector('.probe').setAttribute('cy', 50)
+  })
+}
+
+/*
+ * Twenty-four, not eight. A fully inverting mode is only briefly at its flattest,
+ * and eight samples routinely stepped straight over that instant — the card read
+ * 0.59 even where a denser pass says 0.08. Cheap to fix here because these two
+ * only walk the profiles once; the rotation residual searches every shift for
+ * every frame, so it stays coarser.
+ */
+const STAT_FRAMES = 24
+
+function refreshStats() {
+  for (const card of cards) {
+    const profiles = Array.from({ length: STAT_FRAMES }, (_, f) =>
+      profileAt(card.model, f / STAT_FRAMES, cfg.points)
+    )
+    const r = residual(card.model, cfg.points)
+    const e = evenness(profiles, cfg.points)
+    const a = antiphase(profiles)
+    card.stat.textContent =
+      `residual ${r.toFixed(2)}${r < 0.05 ? ' (pure rotation)' : ''} · ${e.toFixed(2)} even · ${a.toFixed(2)} antiphase`
+  }
+}
+
+let running = true
+let started = null
+
+function frame(now) {
+  if (started === null) started = now
+  const t = ((now - started) / 1000 / cfg.loop) % 1
+  for (const card of cards) {
+    const d = toPath(outlinePoints(card.model, t, cfg.points))
+    for (const p of card.paths) p.setAttribute('d', d)
+    if (card.probe) {
+      const r = radiusAt(card.model, 0, t, cfg.points)
+      card.probe.setAttribute('cx', 50 + r)
+      card.probe.setAttribute('cy', 50)
+    }
+  }
+  if (running) requestAnimationFrame(frame)
+}
+
+let statsTimer = null
+for (const key of ['loop', 'amp', 'mix', 'invert', 'travel', 'sway', 'wraps', 'points']) {
+  const input = document.getElementById(key)
+  const out = document.getElementById(key + 'Out')
+  const sync = () => {
+    cfg[key] = Number(input.value)
+    const decimals = ['points', 'wraps', 'travel'].includes(key) ? 0 : key === 'loop' ? 1 : 2
+    out.textContent = cfg[key].toFixed(decimals)
+    drawFigure()
+    if (key !== 'loop') {
+      clearTimeout(statsTimer)
+      statsTimer = setTimeout(refreshStats, 120)
+    }
+  }
+  input.addEventListener('input', sync)
+  sync()
+}
+
+document.getElementById('toggle').addEventListener('click', (e) => {
+  running = !running
+  e.target.textContent = running ? 'Pause' : 'Play'
+  if (running) { started = null; requestAnimationFrame(frame) }
+})
+
+refreshStats()
+requestAnimationFrame(frame)
+</script>
+</body>
+</html>

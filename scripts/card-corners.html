@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Card corner lab</title>
+<style>
+  :root {
+    --bg: #fcfcfc;
+    --chip: #f2f2f2;
+    --card: #e5e5e5;
+    --sunken: #dfdfdf;
+    --text: #000;
+    --muted: #89827e;
+    --faint: #a29e9c;
+    --accent: #1702fc;
+    --r: 8px;
+    --c: 28px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 0 0 90px;
+    background: var(--bg);
+    color: var(--text);
+    font: 14px/1.5 -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
+  }
+  header {
+    position: sticky; top: 0; z-index: 2;
+    background: rgba(252, 252, 252, 0.93);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid #ececec;
+    padding: 16px 32px;
+  }
+  h1 { font-size: 17px; margin: 0 0 4px; letter-spacing: -0.01em; }
+  .hint { color: var(--muted); font-size: 13px; margin: 0 0 14px; max-width: 84ch; }
+  .controls { display: flex; gap: 26px; align-items: center; flex-wrap: wrap; }
+  .control { display: flex; flex-direction: column; gap: 2px; }
+  .control label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--faint); }
+  .control .row { display: flex; align-items: center; gap: 8px; }
+  input[type=range] { width: 170px; accent-color: var(--accent); }
+  output { font-variant-numeric: tabular-nums; color: var(--muted); min-width: 46px; }
+  main { padding: 26px 32px; }
+  h2 { font-size: 15px; margin: 30px 0 2px; letter-spacing: -0.01em; }
+  h2:first-child { margin-top: 0; }
+  .blurb { color: var(--muted); font-size: 13px; margin: 0 0 14px; max-width: 84ch; }
+  .row-of-cards { display: flex; flex-wrap: wrap; gap: 18px; }
+  .slot { width: 220px; }
+  .slot .name { font-weight: 600; margin-bottom: 1px; }
+  .slot .how { color: var(--faint); font-size: 11px; font-family: 'SF Mono', monospace; margin-bottom: 8px; }
+
+  /* The card, as it actually ships: one radius, media on top for the media
+     kinds, a footer of space dot / age / menu. Only the bottom-right varies. */
+  .card {
+    background: var(--card);
+    border-radius: var(--r);
+    overflow: hidden;
+    width: 100%;
+  }
+  .thumb { height: 96px; background: var(--sunken); }
+  .thumb.tall { height: 132px; }
+  .body { padding: 12px 14px 11px; }
+  .line { height: 9px; border-radius: 4px; background: var(--sunken); margin-bottom: 7px; }
+  .line.w80 { width: 80%; } .line.w60 { width: 60%; } .line.w95 { width: 95%; }
+  .quote { border-left: 3px solid var(--faint); padding-left: 10px; }
+  .foot { display: flex; align-items: center; gap: 6px; margin-top: 11px; color: var(--faint); font-size: 11px; }
+  /* Every treatment only ever works inside a c-by-c square at the bottom right,
+     so reserving exactly that much is provably enough to keep the age and the
+     menu button out of the cut. Costs nothing on the plain card. */
+  .card.eats-corner .foot { padding-right: var(--c); }
+  .card.t-cut-deep .foot { padding-right: calc(var(--c) * 1.4); }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+  .foot .age { margin-left: auto; font-variant-numeric: tabular-nums; }
+
+  /*
+   * Every treatment leaves three corners alone and works the bottom-right, so
+   * whatever the shape is it always means the same thing and always lives in
+   * the same place. border-radius gives convex curves; clip-path gives concave
+   * but angular ones. Both clip, so a polygon and a radius compose.
+   */
+  .t-plain    {}
+  .t-round    { border-bottom-right-radius: var(--c); }
+  .t-quarter  { border-bottom-right-radius: 999px; }
+  .t-wide     { border-bottom-right-radius: calc(var(--c) * 2) var(--c); }
+  .t-square   { border-bottom-right-radius: 0; }
+  .t-slice    { clip-path: polygon(0 0, 100% 0, 100% calc(100% - var(--c)), calc(100% - var(--c)) 100%, 0 100%); }
+  .t-notch    { clip-path: polygon(0 0, 100% 0, 100% calc(100% - var(--c)), calc(100% - var(--c) * 0.45) calc(100% - var(--c) * 0.45), calc(100% - var(--c)) 100%, 0 100%); }
+  .t-step     { clip-path: polygon(0 0, 100% 0, 100% calc(100% - var(--c)), calc(100% - var(--c) * 0.5) calc(100% - var(--c)), calc(100% - var(--c) * 0.5) 100%, 0 100%); }
+  .t-fold     { clip-path: polygon(0 0, 100% 0, 100% calc(100% - var(--c)), calc(100% - var(--c)) calc(100% - var(--c)), calc(100% - var(--c)) 100%, 0 100%); }
+  .t-zigzag   { clip-path: polygon(0 0, 100% 0, 100% calc(100% - var(--c)), calc(100% - var(--c) * 0.66) calc(100% - var(--c) * 0.33), calc(100% - var(--c) * 0.33) calc(100% - var(--c) * 0.66), calc(100% - var(--c)) 100%, 0 100%); }
+  .t-teardrop { border-bottom-right-radius: var(--c); border-top-left-radius: var(--c); }
+
+  /*
+   * A circle bitten out of the corner. Masked rather than covered by a shaped
+   * element painted in the page colour: the card also sits on the canvas, whose
+   * dot grid a solid patch would blot out. A mask takes the pixels away, so
+   * whatever is behind shows through. The half-pixel between the stops is the
+   * antialiasing; a hard stop leaves the arc visibly stepped.
+   */
+  .t-cut {
+    -webkit-mask-image: radial-gradient(circle at 100% 100%, transparent var(--c), #000 calc(var(--c) + 0.5px));
+    mask-image: radial-gradient(circle at 100% 100%, transparent var(--c), #000 calc(var(--c) + 0.5px));
+  }
+  .t-cut-deep {
+    -webkit-mask-image: radial-gradient(circle at 100% 100%, transparent calc(var(--c) * 1.4), #000 calc(var(--c) * 1.4 + 0.5px));
+    mask-image: radial-gradient(circle at 100% 100%, transparent calc(var(--c) * 1.4), #000 calc(var(--c) * 1.4 + 0.5px));
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Card corner lab</h1>
+  <p class="hint">
+    Type carried by the shape of the bottom-right corner. Three corners stay put in every
+    case, so the marker always means the same thing and always sits in the same place.
+    Tell me which shape goes with which type — or that a shape is wrong and wants changing.
+  </p>
+  <div class="controls">
+    <div class="control">
+      <label for="c">Corner size</label>
+      <div class="row"><input id="c" type="range" min="10" max="80" step="2" value="28" /><output id="cOut"></output></div>
+    </div>
+    <div class="control">
+      <label for="r">Base radius</label>
+      <div class="row"><input id="r" type="range" min="0" max="24" step="1" value="8" /><output id="rOut"></output></div>
+    </div>
+  </div>
+</header>
+<main></main>
+
+<script>
+const TREATMENTS = [
+  ['plain', 'Plain', 'the current card'],
+  ['round', 'Rounded', 'border-radius: c'],
+  ['quarter', 'Quarter circle', 'border-radius: 999px'],
+  ['wide', 'Squashed', 'border-radius: 2c c'],
+  ['square', 'Squared off', 'border-radius: 0'],
+  ['slice', 'Sliced', 'clip-path, 45°'],
+  ['notch', 'Notched', 'clip-path, concave'],
+  ['step', 'Stepped', 'clip-path, right angle'],
+  ['fold', 'Folded', 'clip-path, square bite'],
+  ['zigzag', 'Zigzag', 'clip-path, faceted'],
+  ['teardrop', 'Teardrop', 'br + tl radius'],
+  ['cut', 'Cut-out circle', 'mask, concave'],
+  ['cut-deep', 'Cut-out, deeper', 'mask, 1.4c'],
+]
+
+/** Anything that removes area from the corner has to push the footer clear. */
+const EATS_CORNER = new Set(['round', 'quarter', 'wide', 'slice', 'notch', 'step', 'fold', 'zigzag', 'teardrop', 'cut', 'cut-deep'])
+
+/** The five kinds, with the innards each actually has. */
+const KINDS = {
+  note: '<div class="body"><div class="line w95"></div><div class="line w80"></div><div class="line w60"></div><div class="foot"><span class="dot"></span>Reading<span class="age">2d</span>⋯</div></div>',
+  highlight: '<div class="body"><div class="quote"><div class="line w95"></div><div class="line w80"></div></div><div class="foot"><span class="dot"></span>Reading<span class="age">2d</span>⋯</div></div>',
+  image: '<div class="thumb tall"></div><div class="body"><div class="line w80"></div><div class="foot"><span class="dot"></span>Reading<span class="age">2d</span>⋯</div></div>',
+  video: '<div class="thumb"></div><div class="body"><div class="line w80"></div><div class="foot"><span class="dot"></span>Reading<span class="age">2d</span>⋯</div></div>',
+  link: '<div class="thumb"></div><div class="body"><div class="line w95"></div><div class="line w60"></div><div class="foot"><span class="dot"></span>Reading<span class="age">2d</span>⋯</div></div>',
+}
+
+const main = document.querySelector('main')
+
+main.insertAdjacentHTML(
+  'beforeend',
+  `<h2>Every shape, on the same card</h2>
+   <p class="blurb">One kind of card throughout, so the only thing changing is the corner.</p>
+   <div class="row-of-cards" id="all"></div>`
+)
+const all = document.getElementById('all')
+for (const [key, name, how] of TREATMENTS) {
+  all.insertAdjacentHTML(
+    'beforeend',
+    `<div class="slot"><div class="name">${name}</div><div class="how">${how}</div>
+       <div class="card t-${key} ${EATS_CORNER.has(key) ? 'eats-corner' : ''}">${KINDS.note}</div></div>`
+  )
+}
+
+main.insertAdjacentHTML(
+  'beforeend',
+  `<h2>A first guess at the mapping</h2>
+   <p class="blurb">Round for image, sliced for video, a cut-out circle for link, quarter for highlight,
+   plain for note — your suggestion, roughly. Seen together is the only way to judge whether
+   five shapes stay distinguishable at a glance.</p>
+   <div class="row-of-cards" id="mapped"></div>`
+)
+const MAPPING = [
+  ['note', 'plain', 'Note'],
+  ['highlight', 'quarter', 'Highlight'],
+  ['image', 'round', 'Image'],
+  ['video', 'slice', 'Video'],
+  ['link', 'cut', 'Link'],
+]
+const mapped = document.getElementById('mapped')
+for (const [kind, treatment, label] of MAPPING) {
+  mapped.insertAdjacentHTML(
+    'beforeend',
+    `<div class="slot"><div class="name">${label}</div><div class="how">t-${treatment}</div>
+       <div class="card t-${treatment} ${EATS_CORNER.has(treatment) ? 'eats-corner' : ''}">${KINDS[kind]}</div></div>`
+  )
+}
+
+for (const [id, prop] of [['c', '--c'], ['r', '--r']]) {
+  const input = document.getElementById(id)
+  const out = document.getElementById(id + 'Out')
+  const sync = () => {
+    document.documentElement.style.setProperty(prop, input.value + 'px')
+    out.textContent = input.value + 'px'
+  }
+  input.addEventListener('input', sync)
+  sync()
+}
+</script>
+</body>
+</html>
