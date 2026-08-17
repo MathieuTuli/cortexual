@@ -35,11 +35,11 @@ export type UpdateProjectInput = Partial<
  * project is not in a bucket, it is simply not part of any work.
  */
 export function cardIsInProject(card: Card, projectId: string): boolean {
-  return card.projectIds.includes(projectId)
+  return card.projectIds?.includes(projectId) ?? false
 }
 
 export function cardProjects(card: Card, projects: Project[]): Project[] {
-  return projects.filter((p) => card.projectIds.includes(p.id))
+  return projects.filter((p) => card.projectIds?.includes(p.id) ?? false)
 }
 
 /** Note cards filed into a project are its documents. */

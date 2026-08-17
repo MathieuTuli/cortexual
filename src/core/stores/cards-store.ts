@@ -73,6 +73,13 @@ export const useCardsStore = create<CardsState>((set, get) => ({
     try {
       const allCards = await api.getCards()
       const cards = allCards
+        // Cards created before projects existed have no projectIds field.
+        // Normalize them at the boundary so every project-aware action can
+        // safely treat them as belonging to no projects.
+        .map((c: Card) => ({
+          ...c,
+          projectIds: Array.isArray(c.projectIds) ? c.projectIds : [],
+        }))
         .filter((c: Card) => c.deletedAt === null)
         .sort((a: Card, b: Card) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
       set({ cards, isLoading: false })

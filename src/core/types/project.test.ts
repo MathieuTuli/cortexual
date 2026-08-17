@@ -79,6 +79,13 @@ describe('cardIsInProject', () => {
   it('has no uncategorized bucket, unlike spaces', () => {
     expect(cardIsInProject(note('c1', []), 'anything')).toBe(false)
   })
+
+  it('treats a legacy card with no projectIds as outside every project', () => {
+    const legacy = { ...note('legacy', []) }
+    delete (legacy as Partial<Card>).projectIds
+
+    expect(cardIsInProject(legacy as Card, 'p1')).toBe(false)
+  })
 })
 
 describe('cardProjects', () => {
