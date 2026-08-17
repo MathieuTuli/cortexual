@@ -288,15 +288,16 @@ body,
    * corners are the same on every card so the marker always means the same
    * thing and always sits in the same place.
    *
-   * Every treatment works strictly inside a --card-corner square at that
-   * corner, which is what lets the footer reserve exactly that much and be
-   * certain nothing is clipped.
+   * Every treatment is sized from --card-corner and none of them rises more
+   * than that above the bottom edge, which is what lets the footer reserve
+   * exactly that much and be certain nothing is clipped. A shape may reach
+   * further sideways than it does up — the wide one does — but never higher.
    */
   /*
    * The base radius lives here rather than as a rounded-lg utility. Utilities
    * are emitted after this layer, so the shorthand border-radius from one beats
    * a single-corner longhand set here however specific it is — which silently
-   * flattened the round and quarter corners back to 16px and made an image look
+   * flattened the round and wide corners back to 16px and made an image look
    * exactly like a note. theme() reads the same scale the utility would.
    */
   .card-surface {
@@ -309,7 +310,7 @@ body,
 
   /* Sharp adds area rather than removing it, so it needs no footer allowance. */
   .card-shaped--round .card-foot,
-  .card-shaped--quarter .card-foot,
+  .card-shaped--wide .card-foot,
   .card-shaped--slice .card-foot,
   .card-shaped--cut .card-foot {
     padding-right: var(--card-corner);
@@ -323,8 +324,17 @@ body,
     border-bottom-right-radius: var(--card-corner);
   }
 
-  .card-shaped--quarter {
-    border-bottom-right-radius: 999px;
+  /*
+   * A wide, shallow sweep, not a quarter circle. It was a quarter circle —
+   * border-radius: 999px — and a radius that large is clamped to half the box,
+   * so its real size was the card's size. On a 220px lab card that read as a
+   * generous corner; on a quote five hundred wide and just as tall it became a
+   * 245px arc scooped through the middle of the text. Pinning the vertical
+   * radius to --card-corner means the curve can only ever rise as high as the
+   * strip the footer already reserves, whatever the card turns out to be.
+   */
+  .card-shaped--wide {
+    border-bottom-right-radius: calc(var(--card-corner) * 2) var(--card-corner);
   }
 
   .card-shaped--slice {

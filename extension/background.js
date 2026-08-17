@@ -1,4 +1,12 @@
-import { getPostMedia, savePostMedia, saveHighlight, saveImage, saveLink } from './api.js'
+import {
+  getPostMedia,
+  getProjects,
+  getSpaces,
+  savePostMedia,
+  saveHighlight,
+  saveImage,
+  saveLink,
+} from './api.js'
 
 const MENU = {
   image: 'cortexual-save-image',
@@ -37,6 +45,20 @@ async function findMedia(tab, url) {
   return getPostMedia(url)
 }
 
+/**
+ * A quote is filed, not just saved, so the menu opens the same picker the
+ * in-page bubble does rather than quietly guessing. Pages the content script
+ * can't run on — the web store, a pdf viewer, a tab restored from before the
+ * extension loaded — answer nothing, and there the menu saves outright.
+ */
+async function offerPicker(tabId, payload) {
+  if (tabId == null) return false
+  const reply = await chrome.tabs
+    .sendMessage(tabId, { type: 'cortexual:pick-highlight', payload })
+    .catch(() => null)
+  return Boolean(reply?.opened)
+}
+
 /** Badge doubles as the only feedback available from a context menu. */
 async function flash(ok, tabId) {
   await chrome.action.setBadgeText({ text: ok ? '✓' : '!' })
@@ -52,11 +74,14 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     if (info.menuItemId === MENU.image && info.srcUrl) {
       await saveImage({ imageUrl: info.srcUrl, pageUrl: info.pageUrl || tab?.url, title: tab?.title })
     } else if (info.menuItemId === MENU.selection && info.selectionText) {
-      await saveHighlight({
+      const payload = {
         text: info.selectionText,
         url: info.pageUrl || tab?.url,
         title: tab?.title,
-      })
+      }
+      // The picker carries its own feedback, so there is nothing to flash.
+      if (await offerPicker(tab?.id, payload)) return
+      await saveHighlight(payload)
     } else if (info.menuItemId === MENU.media) {
       const url = info.linkUrl || info.pageUrl || tab?.url
       const found = await findMedia(tab, url)
@@ -85,13 +110,22 @@ chrome.commands.onCommand.addListener(async (command) => {
 })
 
 // The content script can't reach the daemon itself — a page's own CSP would
-// block it — so saves are proxied through the worker.
+// block it — so everything the picker needs is proxied through the worker.
+// Each branch returns true to keep the channel open for its async reply.
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message?.type !== 'cortexual:save-highlight') return
+  if (message?.type === 'cortexual:list-targets') {
+    // An empty list is a truthful answer here: it renders as "no spaces yet"
+    // rather than stalling a picker that still has a quote to save.
+    Promise.all([getSpaces().catch(() => []), getProjects().catch(() => [])]).then(
+      ([spaces, projects]) => sendResponse({ spaces, projects })
+    )
+    return true
+  }
 
-  saveHighlight(message.payload)
-    .then(() => sendResponse({ ok: true }))
-    .catch((error) => sendResponse({ ok: false, error: error.message }))
-
-  return true // keep the channel open for the async reply
+  if (message?.type === 'cortexual:save-highlight') {
+    saveHighlight(message.payload)
+      .then(() => sendResponse({ ok: true }))
+      .catch((error) => sendResponse({ ok: false, error: error.message }))
+    return true
+  }
 })

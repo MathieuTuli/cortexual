@@ -18,6 +18,10 @@ are what Chrome loads.
 | Save a highlight | Select text → **❝ Save**, or right-click → **Save highlight** |
 | Save an image | Right-click an image → **Save image to Cortexual** |
 
+Saving a highlight opens a picker — spaces, projects, tags — before the card is
+made, from the bubble and from the context menu alike. Everything else saves
+outright; the popup is where a page gets filed.
+
 Highlights capture the page title, canonical URL, `og:site_name`, and the author
 from `meta[name=author]` or JSON-LD. Images are downloaded and stored locally, so
 a card survives the page taking the image down.
@@ -30,4 +34,7 @@ After saving from the popup you get related cards from your own library.
   the daemon is loopback-only.
 - If the daemon isn't running the popup says so rather than failing silently.
 - Content scripts can't reach the daemon directly (a page's CSP blocks it), so
-  saves are proxied through the service worker.
+  saves — and the list of spaces and projects the picker shows — are proxied
+  through the service worker.
+- Everything the extension draws on a page lives in one shadow root, so no
+  site's own `button {}` or `input {}` rule can reach it.

@@ -15,6 +15,7 @@
     --accent: #1702fc;
     --r: 8px;
     --c: 28px;
+    --w: 220px;
   }
   * { box-sizing: border-box; }
   body {
@@ -44,7 +45,9 @@
   h2:first-child { margin-top: 0; }
   .blurb { color: var(--muted); font-size: 13px; margin: 0 0 14px; max-width: 84ch; }
   .row-of-cards { display: flex; flex-wrap: wrap; gap: 18px; }
-  .slot { width: 220px; }
+  /* Adjustable, because a corner sized by the card rather than by --c looks
+     entirely reasonable in a narrow column and ruins a wide one. */
+  .slot { width: var(--w); }
   .slot .name { font-weight: 600; margin-bottom: 1px; }
   .slot .how { color: var(--faint); font-size: 11px; font-family: 'SF Mono', monospace; margin-bottom: 8px; }
 
@@ -79,6 +82,9 @@
    */
   .t-plain    {}
   .t-round    { border-bottom-right-radius: var(--c); }
+  /* Sized by the card, not by --c: a radius this large is clamped to half the
+     border box, so it is a modest corner at 220px and a 245px arc through the
+     text at the width a real quote card gets. Kept here as the counterexample. */
   .t-quarter  { border-bottom-right-radius: 999px; }
   .t-wide     { border-bottom-right-radius: calc(var(--c) * 2) var(--c); }
   .t-square   { border-bottom-right-radius: 0; }
@@ -122,6 +128,10 @@
     <div class="control">
       <label for="r">Base radius</label>
       <div class="row"><input id="r" type="range" min="0" max="24" step="1" value="8" /><output id="rOut"></output></div>
+    </div>
+    <div class="control">
+      <label for="w">Card width</label>
+      <div class="row"><input id="w" type="range" min="180" max="560" step="10" value="220" /><output id="wOut"></output></div>
     </div>
   </div>
 </header>
@@ -175,15 +185,17 @@ for (const [key, name, how] of TREATMENTS) {
 
 main.insertAdjacentHTML(
   'beforeend',
-  `<h2>A first guess at the mapping</h2>
-   <p class="blurb">Round for image, sliced for video, a cut-out circle for link, quarter for highlight,
-   plain for note — your suggestion, roughly. Seen together is the only way to judge whether
-   five shapes stay distinguishable at a glance.</p>
+  `<h2>The mapping, as it ships</h2>
+   <p class="blurb">Round for image, sliced for video, a cut-out circle for link, the squashed
+   sweep for highlight, plain for note. Seen together is the only way to judge whether five
+   shapes stay distinguishable at a glance — and the column width matters as much as the
+   shape does, which is what the quarter circle taught us. Drag it out to 500px and watch
+   which treatments hold their size and which grow with the card.</p>
    <div class="row-of-cards" id="mapped"></div>`
 )
 const MAPPING = [
   ['note', 'plain', 'Note'],
-  ['highlight', 'quarter', 'Highlight'],
+  ['highlight', 'wide', 'Highlight'],
   ['image', 'round', 'Image'],
   ['video', 'slice', 'Video'],
   ['link', 'cut', 'Link'],
@@ -197,7 +209,7 @@ for (const [kind, treatment, label] of MAPPING) {
   )
 }
 
-for (const [id, prop] of [['c', '--c'], ['r', '--r']]) {
+for (const [id, prop] of [['c', '--c'], ['r', '--r'], ['w', '--w']]) {
   const input = document.getElementById(id)
   const out = document.getElementById(id + 'Out')
   const sync = () => {

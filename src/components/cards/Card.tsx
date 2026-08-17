@@ -19,7 +19,7 @@ const CORNER: Record<CardType['type'], string> = {
   image: 'card-shaped card-shaped--round',
   video: 'card-shaped card-shaped--slice',
   link: 'card-shaped card-shaped--cut',
-  highlight: 'card-shaped card-shaped--quarter',
+  highlight: 'card-shaped card-shaped--wide',
 }
 
 export function Card({ card }: CardProps) {

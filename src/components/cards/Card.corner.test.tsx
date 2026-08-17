@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, cleanup } from '@testing-library/react'
 import type { Card as CardType } from '@/core/types'
@@ -46,7 +48,7 @@ describe('card corner marks the kind', () => {
     ['image', 'card-shaped--round'],
     ['video', 'card-shaped--slice'],
     ['link', 'card-shaped--cut'],
-    ['highlight', 'card-shaped--quarter'],
+    ['highlight', 'card-shaped--wide'],
   ])('gives a %s its own corner', (kind, expected) => {
     render(<Card card={CARDS[kind]} />)
     expect(shell().className).toContain(expected)
@@ -84,6 +86,40 @@ describe('card corner marks the kind', () => {
   it('marks the footer on shaped cards so it can be kept clear', () => {
     render(<Card card={CARDS.link} />)
     expect(document.querySelector('.card-shaped .card-foot')).toBeTruthy()
+  })
+
+  /*
+   * jsdom never loads the stylesheet, so the geometry has to be read out of the
+   * source. Worth doing, because the shape a corner rule describes is not
+   * always the shape it draws: the highlight was `border-radius: 999px`, and a
+   * radius that large is clamped to half the border box — its real size was the
+   * card's size. It looked right in a 220px lab card and swept a 245px arc
+   * through the text of a real quote. So every length in a corner rule is
+   * either written in terms of --card-corner or smaller than it; a bare number
+   * big enough to be clamped, or a percentage radius, fails here.
+   */
+  it('sizes every corner from --card-corner rather than from the card', () => {
+    // import.meta.url is an http url under vite-node, so this reads from the
+    // project root vitest runs in rather than from the module.
+    const css = readFileSync(resolve(process.cwd(), 'src/index.css'), 'utf8')
+    const corner = Number(css.match(/--card-corner:\s*([\d.]+)px/)![1])
+
+    for (const [, selector, body] of css.matchAll(/\.(card-shaped--\w+)\s*\{([^}]*)\}/g)) {
+      for (const [, prop, value] of body.matchAll(/([-a-z]+)\s*:\s*([^;]+);/g)) {
+        const isRadius = prop.endsWith('radius')
+        const literals = [...value.replace(/var\(--card-corner\)/g, '').matchAll(/([\d.]+)(px|%)/g)]
+        // A radius may carry no raw length at all. A clip-path or a mask is
+        // free to use 100% — it is anchored to the corner, not scaled by it —
+        // but its own lengths still have to fit inside the reserved square.
+        const offenders = literals
+          .filter(([, size, unit]) => (isRadius ? true : unit === 'px' && Number(size) > corner))
+          .map(([token]) => token)
+
+        expect({ [`${selector} { ${prop} }`]: offenders }).toEqual({
+          [`${selector} { ${prop} }`]: [],
+        })
+      }
+    }
   })
 
   /*

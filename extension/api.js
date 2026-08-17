@@ -21,6 +21,13 @@ export async function getSpaces() {
   return (await res.json()).filter((s) => !s.deletedAt && s.id !== 'uncategorized')
 }
 
+export async function getProjects() {
+  const res = await fetch(`${API}/projects`)
+  if (!res.ok) throw new Error(`projects: ${res.status}`)
+  // Archived projects are finished work; nothing new gets filed into one.
+  return (await res.json()).filter((p) => !p.deletedAt && p.status === 'active')
+}
+
 export async function getArticle(url) {
   try {
     const res = await fetch(`${API}/article?url=${encodeURIComponent(url)}`, {
@@ -61,6 +68,10 @@ function baseCard(extra) {
   const now = new Date().toISOString()
   return {
     spaceIds: [],
+    // Required on every card, and leaving it off was not harmless:
+    // cardIsInProject() reads .includes() straight off it, so a single card
+    // saved from here was enough to throw the whole Projects page.
+    projectIds: [],
     tags: [],
     subnotes: [],
     createdAt: now,
@@ -122,7 +133,16 @@ export async function saveLink({ url, title, spaceIds = [], tags = [] }) {
   return card
 }
 
-export async function saveHighlight({ text, url, title, author, siteName, spaceIds = [], tags = [] }) {
+export async function saveHighlight({
+  text,
+  url,
+  title,
+  author,
+  siteName,
+  spaceIds = [],
+  projectIds = [],
+  tags = [],
+}) {
   return createCard(
     baseCard({
       id: id('ext-hl'),
@@ -133,6 +153,7 @@ export async function saveHighlight({ text, url, title, author, siteName, spaceI
       sourceUrl: url,
       siteName: siteName || undefined,
       spaceIds,
+      projectIds,
       tags,
     })
   )
