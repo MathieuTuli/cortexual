@@ -19,6 +19,7 @@ import { findRelated } from './related.ts'
 import { searchCards } from './search.ts'
 import { syncTextIndex } from './index-text.ts'
 import { extractPostMedia } from './post-media.ts'
+import { AuthManager } from './auth.ts'
 
 ensureStore()
 
@@ -29,6 +30,26 @@ type Row = Record<string, unknown> & { id: string }
 
 const app = new Hono()
 const api = new Hono()
+
+/*
+ * The gate wraps the whole app rather than a set of admin routes: unlike
+ * mathieutuli.com this has no public half, so the built assets stay behind it
+ * too and only the login page and its icon sit outside.
+ *
+ * Registered before /api and the SPA catch-all below, because Hono dispatches
+ * in registration order.
+ */
+const auth = new AuthManager(process.env.NODE_ENV !== 'production')
+const PUBLIC_PATHS = new Set(['/login', '/logout', '/favicon.svg'])
+
+app.use('*', async (c, next) => {
+  if (PUBLIC_PATHS.has(c.req.path)) return next()
+  return auth.requireAuth(c, next)
+})
+
+app.get('/login', auth.loginPage)
+app.post('/login', auth.loginSubmit)
+app.get('/logout', auth.logout)
 
 // ---------------------------------------------------------------- cards
 
@@ -444,6 +465,7 @@ if (fs.existsSync(DIST)) {
 const port = Number(process.env.PORT) || 3001
 
 serve({ fetch: app.fetch, port, hostname: '127.0.0.1' }, (info) => {
-  // Bound to loopback deliberately: single user, no auth, never leaves the box.
+  // Bound to loopback deliberately: Caddy terminates TLS and proxies in, so
+  // nothing reaches this port except through the login gate in front of it.
   console.log(`cortexual api on http://127.0.0.1:${info.port}`)
 })
