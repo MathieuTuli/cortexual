@@ -16,6 +16,8 @@ interface Card {
   author?: string
   siteName?: string
   url?: string
+  fileName?: string
+  extractedText?: string
   preview?: { title?: string; description?: string; siteName?: string }
   tags: string[]
   subnotes: Array<{ content: string }>
@@ -49,6 +51,10 @@ function cardText(card: Card): string {
     case 'image':
     case 'video':
       if (card.caption) parts.push(card.caption)
+      break
+    case 'pdf':
+      if (card.fileName) parts.push(card.fileName)
+      if (card.extractedText) parts.push(card.extractedText)
       break
   }
 

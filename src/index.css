@@ -312,7 +312,8 @@ body,
   .card-shaped--round .card-foot,
   .card-shaped--wide .card-foot,
   .card-shaped--slice .card-foot,
-  .card-shaped--cut .card-foot {
+  .card-shaped--cut .card-foot,
+  .card-shaped--step .card-foot {
     padding-right: var(--card-corner);
   }
 
@@ -342,6 +343,22 @@ body,
       0 0,
       100% 0,
       100% calc(100% - var(--card-corner)),
+      calc(100% - var(--card-corner)) 100%,
+      0 100%
+    );
+  }
+
+  /*
+   * A square notch — the right angle where the slice is a diagonal. Reads as a
+   * page with a bite taken out of the corner, which is the closest a corner
+   * gets to saying "document".
+   */
+  .card-shaped--step {
+    clip-path: polygon(
+      0 0,
+      100% 0,
+      100% calc(100% - var(--card-corner)),
+      calc(100% - var(--card-corner)) calc(100% - var(--card-corner)),
       calc(100% - var(--card-corner)) 100%,
       0 100%
     );

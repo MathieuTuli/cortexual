@@ -11,6 +11,7 @@ const TYPE_GLYPH: Record<Card['type'], string> = {
   video: '🎬',
   link: '🔗',
   highlight: '❝',
+  pdf: '📄',
 }
 
 function RelatedThumbnail({ card }: { card: Card }) {

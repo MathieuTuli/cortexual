@@ -27,6 +27,10 @@ export function cardText(card: Card): string {
     case 'video':
       if (card.caption) parts.push(card.caption)
       break
+    case 'pdf':
+      if (card.fileName) parts.push(card.fileName)
+      if (card.extractedText) parts.push(card.extractedText)
+      break
   }
 
   if (card.autoCaption) parts.push(card.autoCaption)

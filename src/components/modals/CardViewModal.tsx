@@ -52,7 +52,7 @@ export function CardViewModal() {
 
   // Load full resolution media
   useEffect(() => {
-    if (!card || (card.type !== 'image' && card.type !== 'video')) return
+    if (!card || (card.type !== 'image' && card.type !== 'video' && card.type !== 'pdf')) return
 
     let cancelled = false
 
@@ -176,6 +176,38 @@ export function CardViewModal() {
                 controls
                 className="max-w-full max-h-[60vh]"
               />
+            </div>
+          )}
+
+          {card.type === 'pdf' && (
+            <div className="space-y-3">
+              {blobUrls.length > 0 ? (
+                <iframe
+                  src={blobUrls[0]}
+                  title={card.title || card.fileName}
+                  className="w-full h-[70vh] rounded-lg bg-sunken"
+                />
+              ) : (
+                <div className="h-[40vh] bg-chip rounded-lg animate-pulse" />
+              )}
+              <div className="flex items-center justify-between gap-2 text-xs text-text-muted">
+                <span className="truncate">
+                  {card.fileName}
+                  {card.pageCount !== undefined &&
+                    ` · ${card.pageCount} page${card.pageCount === 1 ? '' : 's'}`}
+                </span>
+                {blobUrls.length > 0 && (
+                  <a
+                    href={blobUrls[0]}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-accent hover:underline underline-offset-2 flex-shrink-0"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    ↗ Open in new tab
+                  </a>
+                )}
+              </div>
             </div>
           )}
 

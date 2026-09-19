@@ -238,6 +238,18 @@ export function EditCardModal() {
           </div>
         )}
 
+        {card.type === 'pdf' && (
+          <div className="px-3.5 py-2.5 bg-chip rounded-md">
+            <p className="text-xs text-text-muted mb-0.5">File</p>
+            <p className="text-sm text-text break-all">
+              📄 {card.fileName}
+              {card.pageCount !== undefined && (
+                <span className="text-text-muted"> · {card.pageCount} page{card.pageCount === 1 ? '' : 's'}</span>
+              )}
+            </p>
+          </div>
+        )}
+
         {card.type === 'image' && (
           <div className="space-y-3">
             <div>

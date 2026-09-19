@@ -12,6 +12,7 @@ const TYPE_GLYPH: Record<Card['type'], string> = {
   video: '🎬',
   link: '🔗',
   highlight: '❝',
+  pdf: '📄',
 }
 
 function RowThumbnail({ card }: { card: Card }) {
@@ -90,6 +91,13 @@ function rowSummary(card: Exclude<Card, LinkCard>): { title: string; subtitle: s
       title: quote || card.title || 'Empty highlight',
       subtitle: attribution,
       untitled: !quote,
+    }
+  }
+  if (card.type === 'pdf') {
+    return {
+      title: card.title || card.fileName,
+      subtitle: card.pageCount !== undefined ? `${card.pageCount} page${card.pageCount === 1 ? '' : 's'}` : '',
+      untitled: false,
     }
   }
   const named = card.title || card.caption || card.autoCaption

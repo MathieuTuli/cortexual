@@ -8,7 +8,7 @@ export const SubnoteSchema = z.object({
 
 export type Subnote = z.infer<typeof SubnoteSchema>
 
-export const CardTypeEnum = z.enum(['note', 'image', 'video', 'link', 'highlight'])
+export const CardTypeEnum = z.enum(['note', 'image', 'video', 'link', 'highlight', 'pdf'])
 export type CardType = z.infer<typeof CardTypeEnum>
 
 export const CardBaseSchema = z.object({
@@ -92,12 +92,26 @@ export const HighlightCardSchema = CardBaseSchema.extend({
   note: z.string().optional(),
 })
 
+export const PdfCardSchema = CardBaseSchema.extend({
+  type: z.literal('pdf'),
+  /** The name the file arrived with; the stored copy is renamed on disk. */
+  fileName: z.string(),
+  pageCount: z.number().optional(),
+  /**
+   * Text the server pulled out of the document at upload. It exists for the
+   * semantic index and the tile excerpt, not as a faithful copy — it's capped,
+   * and the PDF itself remains the source of truth.
+   */
+  extractedText: z.string().optional(),
+})
+
 export const CardSchema = z.discriminatedUnion('type', [
   NoteCardSchema,
   ImageCardSchema,
   VideoCardSchema,
   LinkCardSchema,
   HighlightCardSchema,
+  PdfCardSchema,
 ])
 
 export type CardBase = z.infer<typeof CardBaseSchema>
@@ -106,6 +120,7 @@ export type ImageCard = z.infer<typeof ImageCardSchema>
 export type VideoCard = z.infer<typeof VideoCardSchema>
 export type LinkCard = z.infer<typeof LinkCardSchema>
 export type HighlightCard = z.infer<typeof HighlightCardSchema>
+export type PdfCard = z.infer<typeof PdfCardSchema>
 export type Card = z.infer<typeof CardSchema>
 export type LinkPreview = z.infer<typeof LinkPreviewSchema>
 
@@ -114,12 +129,14 @@ export type CreateImageCardInput = Omit<ImageCard, 'id' | 'createdAt' | 'updated
 export type CreateVideoCardInput = Omit<VideoCard, 'id' | 'createdAt' | 'updatedAt' | 'deletedAt'>
 export type CreateLinkCardInput = Omit<LinkCard, 'id' | 'createdAt' | 'updatedAt' | 'deletedAt'>
 export type CreateHighlightCardInput = Omit<HighlightCard, 'id' | 'createdAt' | 'updatedAt' | 'deletedAt'>
+export type CreatePdfCardInput = Omit<PdfCard, 'id' | 'createdAt' | 'updatedAt' | 'deletedAt'>
 export type CreateCardInput =
   | CreateNoteCardInput
   | CreateImageCardInput
   | CreateVideoCardInput
   | CreateLinkCardInput
   | CreateHighlightCardInput
+  | CreatePdfCardInput
 
 /**
  * Distributed over the union on purpose. `Omit<Card, …>` collapses to the keys

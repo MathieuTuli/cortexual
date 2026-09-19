@@ -33,6 +33,7 @@ const CARDS: Record<string, CardType> = {
   video: { ...base, type: 'video', mediaId: 'm' },
   link: { ...base, type: 'link', url: 'https://example.com' },
   highlight: { ...base, type: 'highlight', text: 'quoted' },
+  pdf: { ...base, type: 'pdf', fileName: 'paper.pdf' },
 } as unknown as Record<string, CardType>
 
 const shell = () => document.querySelector('article') as HTMLElement
@@ -49,6 +50,7 @@ describe('card corner marks the kind', () => {
     ['video', 'card-shaped--slice'],
     ['link', 'card-shaped--cut'],
     ['highlight', 'card-shaped--wide'],
+    ['pdf', 'card-shaped--step'],
   ])('gives a %s its own corner', (kind, expected) => {
     render(<Card card={CARDS[kind]} />)
     expect(shell().className).toContain(expected)
@@ -70,12 +72,12 @@ describe('card corner marks the kind', () => {
   })
 
   it('gives every kind a different corner', () => {
-    const seen = ['note', 'image', 'video', 'link', 'highlight'].map((kind) => {
+    const seen = ['note', 'image', 'video', 'link', 'highlight', 'pdf'].map((kind) => {
       cleanup()
       render(<Card card={CARDS[kind]} />)
       return shell().className.match(/card-shaped--\w+/)?.[0]
     })
-    expect(new Set(seen).size).toBe(5)
+    expect(new Set(seen).size).toBe(6)
   })
 
   /*
@@ -128,7 +130,7 @@ describe('card corner marks the kind', () => {
    * not merely get trimmed at the corner, it disappeared completely. Inset
    * survives, on every kind.
    */
-  it.each(['note', 'image', 'video', 'link', 'highlight'])(
+  it.each(['note', 'image', 'video', 'link', 'highlight', 'pdf'])(
     'keeps a visible selection ring on a %s',
     (kind) => {
       selected.current = true

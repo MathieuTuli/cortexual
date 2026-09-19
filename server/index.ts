@@ -19,6 +19,7 @@ import { findRelated } from './related.ts'
 import { searchCards } from './search.ts'
 import { syncTextIndex } from './index-text.ts'
 import { extractPostMedia } from './post-media.ts'
+import { extractPdfText } from './pdf.ts'
 import { AuthManager } from './auth.ts'
 
 ensureStore()
@@ -241,6 +242,7 @@ const MIME: Record<string, string> = {
   '.webm': 'video/webm',
   '.mov': 'video/quicktime',
   '.jpg': 'image/jpeg',
+  '.pdf': 'application/pdf',
 }
 
 let mediaSequence = 0
@@ -258,7 +260,27 @@ api.post('/media/:cardId', async (c) => {
   // A bare timestamp lets same-millisecond writes in a gallery upload clobber
   // each other, so the sequence disambiguates.
   const filename = `${Date.now()}-${String(mediaSequence++).padStart(6, '0')}${ext}`
-  fs.writeFileSync(path.join(dir, filename), Buffer.from(await c.req.arrayBuffer()))
+  const body = Buffer.from(await c.req.arrayBuffer())
+  fs.writeFileSync(path.join(dir, filename), body)
+
+  // A PDF's words are its searchable content, and the client never sees them
+  // — the text lands on the card here so the semantic index picks it up.
+  // A document that won't parse still uploads; extraction is an enhancement.
+  if (ext === '.pdf') {
+    try {
+      const { text, pageCount } = await extractPdfText(body)
+      const cards = readJson<Row[]>(CARDS_FILE, [])
+      const card = cards.find((x) => x.id === cardId)
+      if (card) {
+        card.extractedText = text
+        card.pageCount = pageCount
+        card.updatedAt = new Date().toISOString()
+        writeJson(CARDS_FILE, cards)
+      }
+    } catch (error) {
+      console.error(`pdf extraction failed for ${cardId}:`, (error as Error).message)
+    }
+  }
 
   return c.json({ filename, cardId })
 })

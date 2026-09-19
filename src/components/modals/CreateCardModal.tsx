@@ -3,7 +3,7 @@ import { useAppStore, useCardsStore, useSpacesStore } from '@/core/stores'
 import type { NewCard } from '@/core/stores/cards-store'
 import type { CardType, CreateCardInput } from '@/core/types'
 import { DEFAULT_SPACE_ID } from '@/core/types'
-import { parseUrl, getYouTubeThumbnail, getHostname, filesFromClipboard, isImage, isMedia } from '@/core/utils'
+import { parseUrl, getYouTubeThumbnail, getHostname, filesFromClipboard, isImage, isMedia, isPdf } from '@/core/utils'
 import { api } from '@/core/api'
 import { Modal, Button, Input, Textarea, TagInput } from '../ui'
 import { SpacePicker } from '../spaces'
@@ -15,6 +15,8 @@ const MEDIA_ACCEPT = {
   'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.webp'],
   'video/*': ['.mp4', '.webm', '.mov'],
 }
+
+const PDF_ACCEPT = { 'application/pdf': ['.pdf'] }
 
 // A batch is one paste or one drop — everything that arrived together.
 interface StagedMedia {
@@ -83,14 +85,16 @@ export function CreateCardModal() {
   const batchCounter = useRef(0)
 
   const isMediaType = cardType === 'image' || cardType === 'video'
+  const isPdfType = cardType === 'pdf'
   const urlList = url
     .split(/[\n\s]+/)
     .map((u) => u.trim())
     .filter(Boolean)
   const stagedImages = staged.filter((s) => isImage(s.file))
-  const stagedVideos = staged.filter((s) => !isImage(s.file))
+  const stagedPdfs = staged.filter((s) => isPdf(s.file))
+  const stagedVideos = staged.filter((s) => !isImage(s.file) && !isPdf(s.file))
   const imageGroups = groupImages(stagedImages, groupMode)
-  const cardCount = imageGroups.length + stagedVideos.length
+  const cardCount = isPdfType ? stagedPdfs.length : imageGroups.length + stagedVideos.length
   const showGroupLabels = imageGroups.some((group) => group.length > 1)
 
   // Sync cardType with defaultType when modal opens
@@ -110,10 +114,11 @@ export function CreateCardModal() {
   }, [])
 
   useEffect(() => {
-    if (!isOpen || !isMediaType) return
+    if (!isOpen || (!isMediaType && !isPdfType)) return
 
+    const accept = isPdfType ? isPdf : isMedia
     const handlePaste = (e: ClipboardEvent) => {
-      const files = filesFromClipboard(e.clipboardData, isMedia)
+      const files = filesFromClipboard(e.clipboardData, accept)
       if (files.length === 0) return
       e.preventDefault()
       addFiles(files)
@@ -121,11 +126,11 @@ export function CreateCardModal() {
 
     window.addEventListener('paste', handlePaste)
     return () => window.removeEventListener('paste', handlePaste)
-  }, [isOpen, isMediaType, addFiles])
+  }, [isOpen, isMediaType, isPdfType, addFiles])
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
-    addFiles(acceptedFiles.filter(isMedia))
-  }, [addFiles])
+    addFiles(acceptedFiles.filter(isPdfType ? isPdf : isMedia))
+  }, [addFiles, isPdfType])
 
   const removeMedia = (preview: string) => {
     URL.revokeObjectURL(preview)
@@ -134,7 +139,7 @@ export function CreateCardModal() {
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
-    accept: MEDIA_ACCEPT,
+    accept: isPdfType ? PDF_ACCEPT : MEDIA_ACCEPT,
     multiple: true,
   })
 
@@ -197,6 +202,21 @@ export function CreateCardModal() {
 
     return [...imageCards, ...videoCards]
   }
+
+  const buildPdfCards = (): NewCard[] =>
+    stagedPdfs.map(({ file }) => ({
+      input: {
+        spaceIds,
+        projectIds,
+        // A shared title across a batch would label every card the same.
+        title: stagedPdfs.length === 1 ? title || undefined : undefined,
+        tags,
+        subnotes: [],
+        type: 'pdf' as const,
+        fileName: file.name,
+      },
+      blobs: [file],
+    }))
 
   /**
    * YouTube and X carry their own embeds, so they only need the id. Everything
@@ -286,6 +306,8 @@ export function CreateCardModal() {
         await createCard(input)
       } else if (isMediaType && staged.length > 0) {
         await createCards(await buildMediaCards(), (done, total) => setProgress({ done, total }))
+      } else if (isPdfType && stagedPdfs.length > 0) {
+        await createCards(buildPdfCards(), (done, total) => setProgress({ done, total }))
       } else if (cardType === 'link') {
         // One URL per line, so a backlog of blog posts is one paste rather
         // than one trip through this modal each.
@@ -311,6 +333,7 @@ export function CreateCardModal() {
   const isValid = () => {
     if (cardType === 'note') return content.trim().length > 0
     if (isMediaType) return staged.length > 0
+    if (isPdfType) return stagedPdfs.length > 0
     if (cardType === 'link') return urlList.length > 0
     if (cardType === 'highlight') return content.trim().length > 0
     return false
@@ -322,9 +345,10 @@ export function CreateCardModal() {
     video: '🎬',
     link: '🔗',
     highlight: '❝',
+    pdf: '📄',
   }
 
-  const cardTypes: CardType[] = ['note', 'highlight', 'image', 'video', 'link']
+  const cardTypes: CardType[] = ['note', 'highlight', 'image', 'video', 'link', 'pdf']
 
   return (
     <Modal open={isOpen} onOpenChange={handleClose} title="New card">
@@ -467,6 +491,55 @@ export function CreateCardModal() {
             </>
           )}
 
+          {isPdfType && (
+            <>
+              <div
+                {...getRootProps()}
+                className={clsx(
+                  'rounded-xl p-10 text-center cursor-pointer transition-colors',
+                  'bg-chip border-2 border-dashed',
+                  isDragActive
+                    ? 'border-accent bg-accent-soft'
+                    : 'border-sunken hover:border-accent'
+                )}
+              >
+                <input {...getInputProps()} />
+                <div>
+                  <p className="text-3xl mb-2">📄</p>
+                  <p className="text-text-muted">
+                    {isDragActive
+                      ? 'Drop them here!'
+                      : 'Drag & drop, click to select, or paste — one card per PDF'}
+                  </p>
+                </div>
+              </div>
+
+              {stagedPdfs.length > 0 && (
+                <div className="space-y-1.5 max-h-64 overflow-y-auto">
+                  {stagedPdfs.map(({ file, preview }) => (
+                    <div
+                      key={preview}
+                      className="flex items-center gap-2.5 px-3 py-2 bg-chip rounded-md group"
+                    >
+                      <span className="text-base">📄</span>
+                      <span className="flex-1 text-sm text-text truncate">{file.name}</span>
+                      <span className="text-xs text-text-faint tabular-nums">
+                        {formatBytes(file.size)}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => removeMedia(preview)}
+                        className="w-5 h-5 bg-black/60 text-white rounded-full text-xs opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center flex-shrink-0"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+
           {cardType === 'link' && (
             <>
               <Textarea
@@ -526,7 +599,7 @@ export function CreateCardModal() {
           >
             {isSubmitting
               ? progress ? `Saving ${progress.done}/${progress.total}…` : 'Saving…'
-              : isMediaType && cardCount > 1 ? `Save ${cardCount} cards` : 'Save'}
+              : (isMediaType || isPdfType) && cardCount > 1 ? `Save ${cardCount} cards` : 'Save'}
           </Button>
         </div>
       </div>
@@ -576,6 +649,11 @@ function StagedGroup({ label, items, onRemove }: StagedGridProps & { label: stri
       <StagedGrid items={items} onRemove={onRemove} />
     </div>
   )
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
 async function generateThumbnail(file: File): Promise<string> {

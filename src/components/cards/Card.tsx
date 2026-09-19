@@ -5,6 +5,7 @@ import { CardNote } from './CardNote'
 import { CardMedia } from './CardMedia'
 import { CardLink } from './CardLink'
 import { CardHighlight } from './CardHighlight'
+import { CardPdf } from './CardPdf'
 import { useCardActions } from './use-card-actions'
 import { timeAgo } from '@/core/utils'
 import { clsx } from 'clsx'
@@ -20,6 +21,7 @@ const CORNER: Record<CardType['type'], string> = {
   video: 'card-shaped card-shaped--slice',
   link: 'card-shaped card-shaped--cut',
   highlight: 'card-shaped card-shaped--wide',
+  pdf: 'card-shaped card-shaped--step',
 }
 
 export function Card({ card }: CardProps) {
@@ -61,6 +63,7 @@ export function Card({ card }: CardProps) {
         <div className="px-4 pt-3.5 pb-3">
           {card.type === 'note' && <CardNote card={card} />}
           {card.type === 'highlight' && <CardHighlight card={card} />}
+          {card.type === 'pdf' && <CardPdf card={card} />}
 
           {isMediaTop && titleText && (
             <p className="text-base text-text leading-snug line-clamp-3">{titleText}</p>

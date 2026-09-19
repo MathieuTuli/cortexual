@@ -104,7 +104,7 @@ export const useCardsStore = create<CardsState>((set, get) => ({
     await api.createCard(card)
 
     // Upload media blobs if provided
-    if (mediaBlobs && (input.type === 'image' || input.type === 'video')) {
+    if (mediaBlobs && (input.type === 'image' || input.type === 'video' || input.type === 'pdf')) {
       const blobs = Array.isArray(mediaBlobs) ? mediaBlobs : [mediaBlobs]
       for (const blob of blobs) {
         await api.uploadMedia(cardId, blob)

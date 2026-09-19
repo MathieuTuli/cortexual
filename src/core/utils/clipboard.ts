@@ -24,3 +24,7 @@ export function isImage(file: File): boolean {
 export function isMedia(file: File): boolean {
   return isImage(file) || file.type.startsWith('video/')
 }
+
+export function isPdf(file: File): boolean {
+  return file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')
+}
