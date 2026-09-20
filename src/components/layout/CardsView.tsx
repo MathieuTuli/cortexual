@@ -12,6 +12,7 @@ export function CardsView() {
   // arguments, so subscribe to each one to re-render when they change.
   useCardsStore((s) => s.cards)
   useCardsStore((s) => s.filterTags)
+  useCardsStore((s) => s.filterTypes)
   useCardsStore((s) => s.searchQuery)
 
   const [viewMode] = useViewMode()

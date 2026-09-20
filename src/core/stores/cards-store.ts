@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { api } from '../api'
-import type { Card, CreateCardInput, UpdateCardInput } from '../types'
+import type { Card, CardType, CreateCardInput, UpdateCardInput } from '../types'
 import { cardIsInProject, cardIsInSpace, libraryCards } from '../types'
 import { generateId } from '../utils'
 
@@ -31,6 +31,7 @@ interface CardsState {
   error: string | null
   searchQuery: string
   filterTags: string[]
+  filterTypes: CardType[]
   /** Card ids from the semantic index, best first. Empty until it answers. */
   semanticIds: string[]
 
@@ -54,6 +55,7 @@ interface CardsState {
   setFilterTags: (tags: string[]) => void
   addFilterTag: (tag: string) => void
   removeFilterTag: (tag: string) => void
+  toggleFilterType: (type: CardType) => void
   clearFilters: () => void
   getCardsBySpace: (spaceId: string | null) => Card[]
   getCardsByProject: (projectId: string) => Card[]
@@ -66,6 +68,7 @@ export const useCardsStore = create<CardsState>((set, get) => ({
   error: null,
   searchQuery: '',
   filterTags: [],
+  filterTypes: [],
   semanticIds: [],
 
   loadCards: async () => {
@@ -210,12 +213,20 @@ export const useCardsStore = create<CardsState>((set, get) => ({
     }))
   },
 
+  toggleFilterType: (type) => {
+    set((state) => ({
+      filterTypes: state.filterTypes.includes(type)
+        ? state.filterTypes.filter((t) => t !== type)
+        : [...state.filterTypes, type],
+    }))
+  },
+
   clearFilters: () => {
-    set({ searchQuery: '', filterTags: [], semanticIds: [] })
+    set({ searchQuery: '', filterTags: [], filterTypes: [], semanticIds: [] })
   },
 
   getCardsBySpace: (spaceId) => {
-    const { cards, searchQuery, filterTags } = get()
+    const { cards, searchQuery, filterTags, filterTypes } = get()
 
     // Project documents are not library cards; a doc has no space, so this
     // only actually changes All cards, where they would otherwise turn up.
@@ -250,6 +261,10 @@ export const useCardsStore = create<CardsState>((set, get) => ({
       filtered = filtered.filter((c) =>
         filterTags.every((tag) => c.tags.includes(tag))
       )
+    }
+
+    if (filterTypes.length > 0) {
+      filtered = filtered.filter((c) => filterTypes.includes(c.type))
     }
 
     return filtered

@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { useCardsStore, useSearchStore } from '@/core/stores'
 import { useViewMode, useScrolledPast } from '@/core/hooks'
 import type { ViewMode } from '@/core/types'
+import { CARD_TYPE_LABELS } from '@/core/types'
 import { Tag, StarButton } from '../ui'
 import { BarNav } from './BarNav'
 import { clsx } from 'clsx'
@@ -34,6 +35,8 @@ export function TopBar({ placeholder }: { placeholder: string }) {
   const setSearchQuery = useCardsStore((s) => s.setSearchQuery)
   const filterTags = useCardsStore((s) => s.filterTags)
   const removeFilterTag = useCardsStore((s) => s.removeFilterTag)
+  const filterTypes = useCardsStore((s) => s.filterTypes)
+  const toggleFilterType = useCardsStore((s) => s.toggleFilterType)
   const clearFilters = useCardsStore((s) => s.clearFilters)
   const [viewMode, setViewMode] = useViewMode()
   const indexProgress = useSearchStore((s) => s.progress)
@@ -129,8 +132,13 @@ export function TopBar({ placeholder }: { placeholder: string }) {
 
         </div>
 
-        {filterTags.length > 0 && (
+        {(filterTags.length > 0 || filterTypes.length > 0) && (
           <div className="flex items-center gap-2 flex-wrap mt-2.5 pointer-events-auto">
+            {filterTypes.map((type) => (
+              <Tag key={type} onRemove={() => toggleFilterType(type)} active>
+                {CARD_TYPE_LABELS[type]}
+              </Tag>
+            ))}
             {filterTags.map((tag) => (
               <Tag key={tag} onRemove={() => removeFilterTag(tag)} active>
                 {tag}

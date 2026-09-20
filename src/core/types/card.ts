@@ -11,6 +11,15 @@ export type Subnote = z.infer<typeof SubnoteSchema>
 export const CardTypeEnum = z.enum(['note', 'image', 'video', 'link', 'highlight', 'pdf'])
 export type CardType = z.infer<typeof CardTypeEnum>
 
+export const CARD_TYPE_LABELS: Record<CardType, string> = {
+  note: 'Notes',
+  image: 'Images',
+  video: 'Videos',
+  link: 'Links',
+  highlight: 'Highlights',
+  pdf: 'PDFs',
+}
+
 export const CardBaseSchema = z.object({
   id: z.string(),
   /** Spaces this card belongs to. Empty means uncategorized. */
