@@ -1,48 +1,11 @@
 import { useSpacesStore } from '@/core/stores'
 import { SpaceItem } from './SpaceItem'
 import { SpaceForm } from './SpaceForm'
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 
 export function SpaceList() {
   const spaces = useSpacesStore((s) => s.spaces)
-  const reorderSpaces = useSpacesStore((s) => s.reorderSpaces)
   const [showForm, setShowForm] = useState(false)
-  const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
-  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
-  const dragNodeRef = useRef<HTMLDivElement | null>(null)
-
-  const handleDragStart = (e: React.DragEvent, index: number) => {
-    setDraggedIndex(index)
-    dragNodeRef.current = e.target as HTMLDivElement
-    e.dataTransfer.effectAllowed = 'move'
-    setTimeout(() => {
-      if (dragNodeRef.current) {
-        dragNodeRef.current.style.opacity = '0.5'
-      }
-    }, 0)
-  }
-
-  const handleDragEnd = () => {
-    if (dragNodeRef.current) {
-      dragNodeRef.current.style.opacity = '1'
-    }
-    setDraggedIndex(null)
-    setDragOverIndex(null)
-    dragNodeRef.current = null
-  }
-
-  const handleDragOver = (e: React.DragEvent, index: number) => {
-    e.preventDefault()
-    if (draggedIndex === null || draggedIndex === index) return
-    setDragOverIndex(index)
-  }
-
-  const handleDrop = async (e: React.DragEvent, toIndex: number) => {
-    e.preventDefault()
-    if (draggedIndex === null || draggedIndex === toIndex) return
-    await reorderSpaces(draggedIndex, toIndex)
-    handleDragEnd()
-  }
 
   return (
     <section>
@@ -58,20 +21,8 @@ export function SpaceList() {
       </div>
 
       <div>
-        {spaces.map((space, index) => (
-          <div
-            key={space.id}
-            draggable={!space.isDefault}
-            onDragStart={(e) => handleDragStart(e, index)}
-            onDragEnd={handleDragEnd}
-            onDragOver={(e) => handleDragOver(e, index)}
-            onDrop={(e) => handleDrop(e, index)}
-            className={
-              dragOverIndex === index && draggedIndex !== index ? 'border-t border-accent' : ''
-            }
-          >
-            <SpaceItem space={space} />
-          </div>
+        {spaces.map((space) => (
+          <SpaceItem key={space.id} space={space} />
         ))}
       </div>
 

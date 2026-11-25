@@ -67,6 +67,7 @@
 
   /* The accent with its red and blue swapped, so the two read as a pair. */
   --tongue: rgb(252, 2, 23);
+  --tongue-gutter: 12px;
 
 
   /* Several spellings, because a trial installs under a different name to a
@@ -445,7 +446,7 @@ body,
    */
   .tongue {
     position: absolute;
-    inset: 0;
+    inset: 0 var(--tongue-gutter);
     z-index: 0;
     background: var(--tongue);
     border-bottom-left-radius: 4em;
