@@ -70,7 +70,11 @@ export function TopBar({ placeholder }: { placeholder: string }) {
           second row when tag filters are on, and centring against that would
           drag the nav down with it.
         */}
-        <BarNav className="w-80 flex-shrink-0 pl-5 pr-3 pt-1.5 pointer-events-auto" />
+        {/* 41px sets home's shape the same distance from the tongue's left
+            edge as the view buttons' shapes are from its right (12 gutter
+            + 28 to their box + ~4 shape inset − ~3 home shape inset). pr-0
+            keeps the cluster on one line inside the 320px band. */}
+        <BarNav className="w-80 flex-shrink-0 pl-[41px] pr-0 pt-1.5 pointer-events-auto" />
 
         <div className="flex-1 min-w-0 mx-auto max-w-[1280px] px-10">
         <div className="flex items-center gap-2.5 pointer-events-auto">
